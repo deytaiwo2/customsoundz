@@ -1,0 +1,502 @@
+import { expect, test } from "@playwright/test";
+
+test("public landing page explains the event-planning service and its menu", async ({ page }) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: /Plan the event you imagine/i }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start planning" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "EPHINTA" }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const menuButton = page.getByRole("button", { name: "Close menu" });
+  await expect(menuButton.locator(".eph-menu-bars span")).toHaveCount(3);
+  const menu = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(menu).toBeVisible();
+  await expect(menu.locator(".eph-menu-brand")).toContainText("EPHINTA");
+  await expect(menu.locator(".eph-menu-brand img")).toHaveCSS("width", "20px");
+  await expect(menu.locator(".eph-menu-primary img")).toHaveCSS("width", "16px");
+  await expect(menu.getByRole("button", { name: /Plan your next event here/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Open menu" })).toHaveAttribute("aria-expanded", "false");
+});
+test("event builder saves a brief and opens registration", async ({ page }) => {
+  await page.goto("/plan");
+
+  await page.getByLabel("Event name").fill("ESS E2E Test Event");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("ess_event_builder_progress")))
+    .toContain("ESS E2E Test Event");
+  await expect(page.getByText("Your progress is saved on this device.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Event name")).toHaveValue("ESS E2E Test Event");
+  await page.getByRole("button", { name: /Next question/ }).click();
+
+  await page.getByLabel("Primary goal").selectOption("Celebrate");
+  await page.getByRole("button", { name: /Next question/ }).click();
+
+  await page.getByLabel("City or venue area").fill("Ibadan");
+  await page.getByRole("button", { name: /Next question/ }).click();
+
+  await page.getByLabel("Expected guests").fill("120");
+  await page.getByRole("button", { name: /Next question/ }).click();
+
+  await page.getByLabel("Planning budget").fill("NGN 2500000");
+  await page.getByRole("button", { name: /Build my event brief/ }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "ESS E2E Test Event" }),
+  ).toBeVisible();
+  await expect(page.getByText(/120 guests/)).toBeVisible();
+
+  await page
+    .getByRole("button", { name: /Save brief and create account/ })
+    .click();
+
+  await expect(page).toHaveURL(/\/auth\/signup/);
+
+  const saved = await page.evaluate(() =>
+    localStorage.getItem("ess_event_draft"),
+  );
+
+  expect(saved).not.toBeNull();
+  expect(JSON.parse(saved as string)).toMatchObject({
+    title: "ESS E2E Test Event",
+    city: "Ibadan",
+    guests: "120",
+    budget: "NGN 2500000",
+  });
+
+});
+
+test("the menu planner action opens the guided event planner", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: /Plan your next event here/ }).click();
+
+  await expect(page).toHaveURL(/\/plan$/);
+  await expect(page.getByRole("heading", { name: "What are you creating?" })).toBeVisible();
+});
+
+test("registration blocks a password shorter than the input minimum", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Create customer account" }).click();
+
+  const dialog = page.locator("#eph-auth-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Full name").fill("ESS E2E Customer");
+  await dialog.getByLabel("Email address").fill("e2e-customer@example.test");
+
+  const password = dialog.getByLabel("Password");
+  await expect(password).toHaveAttribute("autocomplete", "new-password");
+  await password.fill("short");
+  await expect(password).toHaveValue("short");
+
+  // The first step must reject a short password before advancing.
+  const validity = await password.evaluate((element) => ({
+    minLength: element.getAttribute("minlength"),
+    tooShort: element.validity.tooShort,
+    valueLength: element.value.length,
+  }));
+  expect(validity.minLength).toBe("8");
+  await dialog.getByRole("button", { name: "Next" }).click();
+  await expect(dialog.getByText("Step 1 of 3")).toBeVisible();
+  await expect(password).toBeVisible();
+
+  await password.fill("LongPassword123");
+  expect(await password.evaluate((element) => element.validity.valid)).toBe(false);
+  await dialog.getByRole("button", { name: "Next" }).click();
+  await expect(dialog.getByText("Step 1 of 3")).toBeVisible();
+
+  await password.fill("StrongPass123!");
+  expect(await password.evaluate((element) => element.validity.valid)).toBe(true);
+  await dialog.getByRole("button", { name: "Next" }).click();
+  await expect(dialog.getByText("Step 2 of 3")).toBeVisible();
+});
+test("registration supports back and next navigation and a review step", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Create customer account" }).click();
+
+  const dialog = page.locator("#eph-auth-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Full name").fill("Mobile Registration Test");
+  await dialog.getByLabel("Email address").fill("mobile-registration@example.test");
+  await dialog.getByLabel("Password").fill("StrongPass123!");
+
+  await dialog.getByRole("button", { name: "Next" }).click();
+  await expect(dialog.getByText("Step 2 of 3")).toBeVisible();
+  await expect(dialog.getByText("Event planner account")).toBeVisible();
+
+  await dialog.getByRole("button", { name: "Back" }).click();
+  await expect(dialog.getByLabel("Full name")).toHaveValue("Mobile Registration Test");
+
+  await dialog.getByRole("button", { name: "Next" }).click();
+  await dialog.getByRole("button", { name: "Next" }).click();
+  await expect(dialog.getByText("Step 3 of 3")).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Review your account" })).toBeVisible();
+  await expect(dialog.getByText("mobile-registration@example.test")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Create account" })).toBeVisible();
+
+  await dialog.getByRole("button", { name: "Back" }).click();
+  await expect(dialog.getByLabel("Account type")).toHaveValue("CLIENT");
+  await dialog.getByRole("button", { name: "Back" }).click();
+  await expect(dialog.getByLabel("Full name")).toHaveValue("Mobile Registration Test");
+  await dialog.getByRole("button", { name: "Back" }).click();
+  await expect(dialog).toBeHidden();
+});
+
+test("sign-in displays a readable error when authentication fails", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/auth/login", async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "INVALID_CREDENTIALS",
+          message: "Invalid email or password",
+        },
+      }),
+    });
+  });
+
+  await page.goto("/auth/signin?role=CLIENT");
+
+  await page.getByLabel("Email").fill("e2e@example.test");
+  const password = page.getByRole("textbox", { name: "Password" });
+  await expect(password).not.toHaveAttribute("minlength");
+  await password.fill("short");
+  await page.getByRole("button", { name: /Continue securely/ }).click();
+
+  await expect(page.locator(".ess-form-error")).toHaveAttribute("role", "alert");
+  await expect(page.locator(".ess-form-error")).toContainText(
+    "That email and password do not match",
+  );
+  await expect(page.locator(".ess-form-error")).toContainText("Forgot password");
+});
+
+test("landing-page registration explains when an email or phone number is already in use", async ({ page }) => {
+  await page.route("**/api/v1/auth/register", async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "ALREADY_EXISTS",
+          message: "Email or phone already registered",
+        },
+      }),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Create customer account" }).click();
+  const dialog = page.locator("#eph-auth-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Full name").fill("Existing Account Test");
+  await dialog.getByLabel("Email address").fill("existing@example.test");
+  await dialog.getByLabel("Password").fill("StrongPass123!");
+  await dialog.getByRole("button", { name: /Next/ }).click();
+  await dialog.getByRole("button", { name: /Next/ }).click();
+  await dialog.getByRole("button", { name: /Create account/ }).click();
+
+  await expect(dialog.locator(".eph-auth-error")).toHaveAttribute("role", "alert");
+  await expect(dialog.locator(".eph-auth-error")).toContainText("already exists");
+  await expect(dialog.locator(".eph-auth-error")).toContainText("Sign in");
+});
+
+test("landing-page sign-in explains incorrect passwords and accepts legacy password lengths", async ({ page }) => {
+  await page.route("**/api/v1/auth/login", async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "INVALID_CREDENTIALS",
+          message: "Invalid email or password",
+        },
+      }),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Sign in to your account" }).click();
+  const dialog = page.locator("#eph-auth-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Email address").fill("legacy@example.test");
+  const password = dialog.getByLabel("Password");
+  await expect(password).not.toHaveAttribute("minlength");
+  await password.fill("short");
+  await dialog.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(dialog.locator(".eph-auth-error")).toHaveAttribute("role", "alert");
+  await expect(dialog.locator(".eph-auth-error")).toContainText("That email and password do not match");
+  await expect(dialog.locator(".eph-auth-error")).toContainText("Forgot password");
+});
+
+test("forgot-password flow gives a privacy-safe confirmation", async ({ page }) => {
+  await page.route("**/api/v1/auth/forgot-password", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Sign in to your account" }).click();
+  const dialog = page.locator("#eph-auth-dialog");
+  await dialog.locator(".eph-auth-switch").getByRole("button", { name: "Reset it" }).click();
+  await expect(dialog.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+  await dialog.getByLabel("Email address").fill("reset@example.test");
+  await dialog.getByRole("button", { name: "Send reset instructions" }).click();
+  await expect(dialog.locator(".eph-auth-notice")).toContainText(
+    "If an account exists for that email, a reset link has been sent",
+  );
+});
+
+test("switching from registration to sign-in clears signup-only password validation", async ({ page }) => {
+  await page.route("**/api/v1/auth/login", async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password" } }),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Create customer account" }).click();
+  const dialog = page.locator("#eph-auth-dialog");
+  await dialog.getByLabel("Full name").fill("Password Mode Switch Test");
+  await dialog.getByLabel("Email address").fill("switch@example.test");
+  const signupPassword = dialog.getByLabel("Password");
+  await signupPassword.fill("short");
+  await expect(signupPassword).toHaveAttribute("minlength", "8");
+  expect(await signupPassword.evaluate((element) => element.validity.valid)).toBe(false);
+
+  await dialog.locator(".eph-auth-switch").getByRole("button", { name: "Sign in" }).click();
+  await expect(dialog.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  const signinPassword = dialog.getByLabel("Password");
+  await expect(signinPassword).not.toHaveAttribute("minlength");
+  await expect(signinPassword).toHaveValue("");
+  await signinPassword.fill("short");
+  await dialog.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(dialog.locator(".eph-auth-error")).toContainText("That email and password do not match");
+});
+
+test("music dock fits the phone screen and exposes playback controls @mobile", async ({ page }) => {
+  await page.goto("/");
+  const player = page.getByRole("region", { name: "EPHINTA music player" });
+  await expect(player).toBeVisible();
+  const viewport = page.viewportSize();
+  const bounds = await player.boundingBox();
+  expect(viewport).not.toBeNull();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport!.width);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport!.height);
+  await expect(player.getByRole("button", { name: /play music|pause music/i })).toBeVisible();
+  await expect(player.getByRole("button", { name: "Music settings" })).toBeVisible();
+});
+
+test("mobile menu opens and provides sign-in access @mobile", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "Mobile menu is checked on the mobile viewport.");
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+
+  const menu = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(menu).toBeVisible();
+  await menu.getByRole("button", { name: "Sign in to your account" }).click();
+
+  await expect(page.getByRole("dialog", { name: "Welcome back" })).toBeVisible();
+});
+
+test("authenticated planner can add a checklist task to an owned event", async ({ page }) => {
+  const event = {
+    id: "event-e2e-001", title: "Authenticated E2E Event", type: "CORPORATE",
+    status: "DRAFT", city: "Ibadan", country: "NG", currency: "NGN",
+    expectedGuests: 80, startsAt: null, endsAt: null,
+  };
+  await page.addInitScript(() => {
+    localStorage.setItem("ess_user", JSON.stringify({
+      id: "planner-e2e", email: "planner@example.test", name: "E2E Planner", role: "CLIENT",
+    }));
+    localStorage.setItem("ess_access_token", "e2e-access-token");
+  });
+  // Keep ancillary dashboard requests deterministic while specific fixtures
+  // below continue to provide the owned event and task responses.
+  await page.route("**/api/v1/**", (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ items: [], tasks: [], answers: {}, summary: [] }),
+  }));
+  await page.route("**/api/v1/events", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ items: [event] }),
+  }));
+  await page.route("**/api/v1/readiness/mine", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }),
+  }));
+  await page.route("**/api/v1/events/event-e2e-001", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ event }),
+  }));
+  await page.route("**/api/v1/events/event-e2e-001/tasks", async (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ tasks: [] }) });
+    }
+    expect(route.request().headers().authorization).toBe("Bearer e2e-access-token");
+    expect(route.request().postDataJSON()).toMatchObject({ title: "Confirm event venue" });
+    return route.fulfill({
+      status: 201, contentType: "application/json",
+      body: JSON.stringify({ task: { id: "task-e2e-001", title: "Confirm event venue", tier: "ESSENTIAL", status: "TODO" } }),
+    });
+  });
+  await page.route("**/api/v1/events/event-e2e-001/guests**", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ items: [], total: 0 }),
+  }));
+  await page.route("**/api/v1/events/event-e2e-001/guests/check-ins", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }),
+  }));
+  await page.route("**/api/v1/events/event-e2e-001/budget", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }),
+  }));
+  await page.route("**/api/v1/payments/bookings**", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }),
+  }));
+  await page.route("**/api/v1/events/event-e2e-001/plan-answers", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ answers: {} }),
+  }));
+  await page.route("**/api/v1/readiness/events/event-e2e-001", (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ readiness: { status: "NOT_STARTED", totalChecks: 0, greenCount: 0, amberCount: 0, redCount: 0, pendingCount: 0 }, checks: [] }),
+  }));
+
+  await page.goto("/dashboard/client?tab=planner");
+  await expect(page.getByRole("heading", { name: /Welcome back, E2E/ })).toBeVisible();
+  // Auth/session restoration can normalize the dashboard URL and reset its tab.
+  // Exercise the visible navigation instead of relying on a query-string tab state.
+  const eventWorkspaceTab = page.getByRole("button", { name: "Event workspace", exact: true });
+  await eventWorkspaceTab.dispatchEvent("click");
+  await expect(page.getByRole("heading", { name: "Complete event workspace" })).toBeVisible();
+  await expect(page.locator('select option[value="event-e2e-001"]')).toHaveText(event.title);
+  const taskInput = page.locator('section[aria-labelledby="event-workspace-title"] label').filter({ hasText: /^Task$/ }).locator("input");
+  await expect(taskInput).toBeVisible();
+  await taskInput.fill("Confirm event venue");
+  // Submit with the keyboard: the sticky branded header can overlap the button in CI.
+  await taskInput.press("Enter");
+  await expect(page.getByText("Confirm event venue")).toBeVisible();
+  await expect(page.getByText("Task added to the event timeline.")).toBeVisible();
+});
+
+test("authenticated planner receives no private event data outside the owned event list", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("ess_user", JSON.stringify({
+      id: "planner-other", email: "other@example.test", name: "Other Planner", role: "CLIENT",
+    }));
+    localStorage.setItem("ess_access_token", "e2e-access-token");
+  });
+  await page.route("**/api/v1/events", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }),
+  }));
+  await page.route("**/api/v1/readiness/mine", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }),
+  }));
+
+  await page.goto("/dashboard/client?tab=overview");
+  await expect(page.getByRole("heading", { name: /Welcome back, Other/ })).toBeVisible();
+  await expect(page.getByText("Another Owner's Private Event")).toHaveCount(0);
+});
+
+
+test("branded startup splash appears and clears after the app shell is ready", async ({ page }) => {
+  // Hold the entry module briefly so the short first-paint splash can be
+  // observed deterministically instead of racing its 450ms dismissal timer.
+  await page.route("**/src/main.tsx", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    await route.continue();
+  });
+  await page.goto("/", { waitUntil: "commit" });
+  const splash = page.locator("[data-ephinta-startup-splash]");
+  await expect(splash).toBeVisible({ timeout: 5000 });
+  await expect(splash).toContainText("EPHINTA");
+  await expect(splash).toBeHidden({ timeout: 5000 });
+});
+
+
+test("blocked autoplay offers a user-gesture sound activation", async ({ page }) => {
+  await page.addInitScript(() => {
+    const state = window as Window & { __ephintaAudioUserGesture?: boolean };
+    state.__ephintaAudioUserGesture = false;
+    document.addEventListener("pointerdown", () => { state.__ephintaAudioUserGesture = true; }, true);
+    document.addEventListener("keydown", () => { state.__ephintaAudioUserGesture = true; }, true);
+    const nativePlay = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      if (!state.__ephintaAudioUserGesture) {
+        return Promise.reject(new DOMException("User gesture required", "NotAllowedError"));
+      }
+      return nativePlay.call(this);
+    };
+  });
+  await page.goto("/");
+  const player = page.getByRole("region", { name: "EPHINTA music player" });
+  await expect(player.getByRole("button", { name: "Enable sound and play music" })).toBeVisible();
+  await expect(player.locator(".eph-audio__notice")).toContainText("blocked automatic playback");
+  await player.getByRole("button", { name: "Enable sound and play music" }).click();
+  expect(await page.evaluate(() => (window as Window & { __ephintaAudioUserGesture?: boolean }).__ephintaAudioUserGesture)).toBe(true);
+  await expect.poll(async () => {
+    const audio = player.locator("audio");
+    const playing = await audio.evaluate((element: HTMLAudioElement) => !element.paused);
+    const status = await player.locator(".eph-audio__status").innerText();
+    return playing || /Music could not start|This track is unavailable/i.test(status);
+  }).toBe(true);
+});
+
+test("music player respects a saved sound-off choice after reload", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("ephinta:sound", "off"));
+  await page.goto("/");
+  const player = page.getByRole("region", { name: "EPHINTA music player" });
+  await expect(player).toBeVisible();
+  await expect(player.getByRole("button", { name: "Play music" })).toBeVisible();
+  await expect(player.locator("audio")).toHaveJSProperty("paused", true);
+});
+
+test("production app plays bundled music or explains the browser gesture fallback", async ({ page }) => {
+  await page.goto("/");
+  const player = page.getByRole("region", { name: "EPHINTA music player" });
+  await expect(player).toBeVisible();
+  await expect(player.getByRole("button", { name: /play music|pause music/i })).toBeVisible();
+  await player.getByRole("button", { name: "Music settings" }).click();
+  const tracks = player.getByLabel("Choose music");
+  await expect(tracks.locator("option")).toHaveCount(6);
+  await tracks.selectOption("2");
+  await expect(player.locator(".eph-audio__heading")).toContainText("Welcome, Little One");
+  await expect(player.getByRole("button", { name: "Enable sound and play music" })).toBeVisible();
+  await expect(player.getByRole("slider", { name: /Volume/ })).toBeVisible();
+
+  const audio = player.locator("audio");
+  const audioUrl = await audio.evaluate((element: HTMLAudioElement) => element.src);
+  expect(decodeURIComponent(audioUrl)).toContain("Welcome, Little One");
+  const asset = await page.request.get(audioUrl);
+  expect(asset.ok()).toBeTruthy();
+  expect(asset.headers()["content-type"]).toContain("audio/mpeg");
+  expect(Number(asset.headers()["content-length"] || 0)).toBeGreaterThan(100_000);
+
+  await player.getByRole("button", { name: "Enable sound and play music" }).click();
+  await expect.poll(async () => {
+    const playing = await audio.evaluate((element: HTMLAudioElement) => !element.paused);
+    const status = await player.locator(".eph-audio__status").innerText();
+    return playing || /Playback needs your tap|Music could not start|This track is unavailable/i.test(status);
+  }).toBe(true);
+});
