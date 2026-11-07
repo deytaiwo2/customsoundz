@@ -512,7 +512,9 @@ function Workspace({ payload, onLogout }: { payload: AuthPayload; onLogout: () =
           <p className="workspace-subtitle">Your event planning workspace is ready. Sign out to switch to a vendor account.</p>
         </div>
         <button className="secondary-button" onClick={onLogout}>Sign out</button>
-      </header>\n\n      <ProductionProjectsPanel payload={payload} />
+      </header>
+
+      <ProductionProjectsPanel payload={payload} />
 
       <section className="workspace-grid">
         <div className="workspace-card workspace-intro">
