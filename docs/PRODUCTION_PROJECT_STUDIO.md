@@ -4,7 +4,7 @@
 
 1. Open the public landing page and scroll to **Build a sample. Price your production.**
 2. Select style, mood, key, tempo and sample duration. The browser synthesizer creates a short illustrative sketch locally; it does not claim to generate a finished AI song.
-3. Select one or more production services. The page displays an itemised NGN estimate from the server-matched launch price menu.
+3. Select one or more production services. The page displays an itemised NGN estimate from the server-matched launch price menu. For the Yuletide campaign, select 1, 2 or 3 songs, enter the recipient name and occasion, and optionally add a dedication and a personal story. Storytelling is required only when the optional storytelling format is selected; that version is scoped to a maximum of 2 minutes 30 seconds.
 4. Sign in or create a customer account and submit the project. The API recalculates the estimate on the server; browser-submitted prices are never trusted.
 5. The project is assigned to the Dublu Vé Production queue and administrators receive an in-app notification.
 6. Production staff move the project through IN_PRODUCTION and REVIEW. Once the final audio master is ready, an administrator uploads it through the private deliverable endpoint.
@@ -40,7 +40,7 @@ The landing studio includes a seasonal Yuletide offer for original occasional so
 | 2 songs | ₦25,000 | ₦50,000 |
 | 3 songs | ₦20,000 | ₦60,000 |
 
-Customers may optionally request personal storytelling based on a dedication, memory or story. The target maximum finished length for this option is **2 minutes 30 seconds**. Storytelling is recorded in the submitted production brief; the production team confirms the final creative scope and quote. The API recalculates package pricing from the selected quantity and rejects the campaign after the stated end date.
+Customers enter the loved one’s name and occasion, and may add a dedication. They may optionally select personal storytelling and provide the story (required only when that option is selected); the target maximum finished length for storytelling songs is **2 minutes 30 seconds**. These details are saved in the production brief and displayed to the production team. The API recalculates package pricing from the selected quantity and rejects the campaign after the stated end date.
 
 ## Price menu and commercial approval
 
@@ -53,7 +53,7 @@ The initial menu in the landing studio and API is an illustrative launch estimat
 - Mastering: ₦30,000
 - Studio recording session: ₦40,000
 
-These are starter estimates, not prices previously approved by the business owner. The Yuletide package rates above are the campaign-specific prices requested for this offer. The production team must approve or replace them before accepting paid customer orders. The customer is told that the final quote is confirmed after reviewing complexity, duration, revisions, talent and deliverables. No payment is collected by this intake workflow; payment/escrow must be linked to an approved quote before production is commercially accepted.
+These are starter estimates, not prices previously approved by the business owner. The Yuletide package rates above are the campaign prices supplied by the business owner for this offer. The production team must approve or replace them before accepting paid customer orders. The customer is told that the final quote is confirmed after reviewing complexity, duration, revisions, talent and deliverables. No payment is collected by this intake workflow; payment/escrow must be linked to an approved quote before production is commercially accepted.
 
 ## Notifications and limitations
 
