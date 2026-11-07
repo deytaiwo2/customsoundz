@@ -157,26 +157,28 @@ export default function BookingWorkPanel({ mode }: { mode: Mode }) {
                 <p className="ess-muted">{mode === "provider" ? "This order is funded and awaiting your work." : "Your order is funded and awaiting provider delivery."}</p>
               ) : null}
 
+              {booking.deliveryAssets?.length && (mode === "provider" || ["DELIVERED", "DISPUTED", "FULFILLED"].includes(booking.status)) ? (
+                <div className="ess-panel" style={{ marginTop: 8 }}>
+                  <strong>Audio files</strong>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {booking.deliveryAssets.map((asset) => (
+                      <div key={asset.id} style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                        <span>{asset.fileName} <small className="ess-muted">({(Number(asset.sizeBytes) / (1024 * 1024)).toFixed(1)} MB)</small></span>
+                        <button className="ess-outline-button" type="button" disabled={busy === booking.id} onClick={() => void downloadDelivery(booking.id, asset)}>
+                          {busy === booking.id ? "Preparing…" : "Download audio"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {booking.status === "DELIVERED" && (
                 <div className="ess-panel" style={{ marginTop: 8 }}>
                   <strong>Delivery submitted</strong>
                   {booking.deliveredAt && <p className="ess-muted">{new Date(booking.deliveredAt).toLocaleString()}</p>}
                   <p>{booking.deliveryNote || "No delivery note supplied."}</p>
-                  {booking.deliveryAssets?.length ? (
-                    <div style={{ display: "grid", gap: 8 }}>
-                      <strong>Audio files</strong>
-                      {booking.deliveryAssets.map((asset) => (
-                        <div key={asset.id} style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-                          <span>{asset.fileName} <small className="ess-muted">({(Number(asset.sizeBytes) / (1024 * 1024)).toFixed(1)} MB)</small></span>
-                          {mode === "customer" && (
-                            <button className="ess-outline-button" type="button" disabled={busy === booking.id} onClick={() => void downloadDelivery(booking.id, asset)}>
-                              {busy === booking.id ? "Preparing…" : "Download audio"}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
+                  {!booking.deliveryAssets?.length && (
                     <p className="ess-form-error" role="status">No audio file has been attached yet. The provider must upload the agreed deliverable before escrow can be released.</p>
                   )}
                   {mode === "customer" && !booking.eventId && (
