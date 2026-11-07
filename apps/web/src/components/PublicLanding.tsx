@@ -1196,7 +1196,7 @@ export default function PublicLanding({
                 </div>
                 {(role === 'ARTIST' || role === 'VENDOR' || role === 'ORGANIZATION') ? (
                   <div className="eph-field">
-                    <label htmlFor="eph-business">Business / organization name</label>
+                    <label htmlFor="eph-business">{role === 'ARTIST' ? 'Artist or studio name' : 'Business / organization name'}</label>
                     <input id="eph-business" className="eph-control" required minLength={2} value={businessName} onChange={e => setBusinessName(e.target.value)} />
                   </div>
                 ) : (
@@ -1204,9 +1204,7 @@ export default function PublicLanding({
                     <strong>{roleLabel(role)} account</strong>
                     <span>{role === 'CLIENT'
                       ? 'Your account will open the customer workspace for discovering and booking creative services.'
-                      : role === 'ARTIST'
-                        ? 'Your account will open an artist workspace for your profile, audio services, bookings and earnings.'
-                        : role === 'AFFILIATE'
+                      : role === 'AFFILIATE'
                         ? 'Your account will open referral tools for sharing services and following referral activity.'
                         : role === 'VERIFIER'
                           ? 'Your account will open readiness tools for assigned service checks and event milestones.'
