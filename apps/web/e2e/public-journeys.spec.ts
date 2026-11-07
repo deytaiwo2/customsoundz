@@ -225,7 +225,7 @@ test("registration supports back and next navigation across the shared role-spec
   await expect(dialog.getByRole("button", { name: "Create account" })).toBeVisible();
 
   await dialog.getByRole("button", { name: "Back" }).click();
-  await expect(dialog.getByRole("button", { name: "Event Planner" })).toHaveClass(/active/);
+  await expect(dialog.getByRole("button", { name: "Customer" })).toHaveClass(/active/);
   await dialog.getByRole("button", { name: "Back" }).click();
   await expect(dialog.getByLabel("Full name")).toHaveValue("Mobile Registration Test");
   await dialog.getByRole("button", { name: "Back" }).click();

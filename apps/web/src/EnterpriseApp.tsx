@@ -3228,7 +3228,7 @@ function AuthModal({
           {mode === "signup" && registrationStep === 1 && (role === "ARTIST" || role === "VENDOR" || (role === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER")) && (
             <>
               <label>
-                Business name
+                {role === "ARTIST" ? "Artist or studio name" : "Business name"}
                 <input
                   value={business}
                   onChange={(event) => {
@@ -3236,7 +3236,7 @@ function AuthModal({
                     touch("business");
                   }}
                   onBlur={() => touch("business")}
-                  placeholder="Northstar Events"
+                  placeholder={role === "ARTIST" ? "e.g. Wale Waves Studio" : "Northstar Events"}
                   minLength={2}
                   maxLength={120}
                   required
@@ -3289,7 +3289,7 @@ function AuthModal({
                     touch("vendorDescription");
                   }}
                   onBlur={() => touch("vendorDescription")}
-                  placeholder="Describe your services, capacity, and ideal events."
+                  placeholder={role === "ARTIST" ? "Describe your sound, style and experience." : "Describe your services, capacity, and ideal events."}
                   rows={3}
                   maxLength={2000}
                   aria-invalid={Boolean(fieldError("vendorDescription", vendorDescription))}
