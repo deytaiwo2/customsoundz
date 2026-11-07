@@ -55,7 +55,10 @@ adminRouter.post("/bookings/:bookingId/resolve-dispute", asyncHandler(async (req
     select: { id: true, status: true, eventId: true },
   });
   if (!booking) return res.status(404).json({ error: { code: "BOOKING_NOT_FOUND", message: "Booking not found" } });
-  if (booking.status !== "DISPUTED") {
+  const replayedResolution =
+    (action === "REFUND" && booking.status === "REFUNDED") ||
+    (action === "RELEASE" && booking.status === "FULFILLED");
+  if (booking.status !== "DISPUTED" && !replayedResolution) {
     return res.status(409).json({ error: { code: "DISPUTE_REQUIRED", message: "Only disputed bookings can be resolved here" } });
   }
   if (action === "RELEASE" && booking.eventId) {

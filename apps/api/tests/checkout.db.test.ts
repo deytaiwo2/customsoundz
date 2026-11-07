@@ -45,6 +45,7 @@ describe.skipIf(!run)("Dublu Vé standalone creative-service checkout (DB)", () 
     });
     await prisma.vendorProfile.update({ where: { id: profile.id }, data: { verification: "VERIFIED" } });
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { userId_currency: { userId: customer.id, currency: "NGN" } } });
+    let adminId: string | undefined;
     await prisma.wallet.update({ where: { id: wallet.id }, data: { availableMinor: 500000n, escrowMinor: 0n } });
 
     try {
@@ -95,7 +96,7 @@ describe.skipIf(!run)("Dublu Vé standalone creative-service checkout (DB)", () 
       await prisma.cart.deleteMany({ where: { userId: customer.id } });
       await prisma.ledgerEntry.deleteMany({ where: { walletId: wallet.id } });
       await prisma.listing.deleteMany({ where: { id: listing.id } });
-      await prisma.user.deleteMany({ where: { id: { in: [customer.id, artist.id] } } });
+      await prisma.user.deleteMany({ where: { id: { in: [customer.id, artist.id, ...(adminId ? [adminId] : [])] } } });
       await prisma.category.deleteMany({ where: { id: category.id } });
     }
   }, 30_000);
