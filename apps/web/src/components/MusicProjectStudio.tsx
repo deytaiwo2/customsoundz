@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { apiUrl } from "../lib/api";
 
 type ServiceKey = "song" | "jingle" | "voiceover" | "beat" | "mix" | "master" | "studio";
@@ -13,7 +13,7 @@ const SERVICES: { key: ServiceKey; label: string; detail: string; price: number 
 ];
 const money = (n: number) => new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
 
-export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void }) {
+type ProjectRow = { id: string; reference: string; title: string; status: string; createdAt: string; readyAt?: string | null; deliveryFileName?: string | null; estimatedTotalMinor: string; currency: string };\n\nexport default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void }) {
   const [title, setTitle] = useState("My first Dublu Vé track");
   const [genre, setGenre] = useState("Afrobeats");
   const [mood, setMood] = useState("Uplifting");
@@ -24,12 +24,12 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
   const [services, setServices] = useState<ServiceKey[]>(["jingle", "beat", "mix", "master"]);
   const [playing, setPlaying] = useState(false);
   const [sending, setSending] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState("");\n  const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [error, setError] = useState("");
   const audioContext = useRef<AudioContext | null>(null);
   const timers = useRef<number[]>([]);
   const total = useMemo(() => SERVICES.filter(s => services.includes(s.key)).reduce((sum, s) => sum + s.price, 0), [services]);
-  const selected = SERVICES.filter(s => services.includes(s.key));
+  const selected = SERVICES.filter(s => services.includes(s.key));\n\n  async function refreshProjects() {\n    try { const response = await fetch(apiUrl("/production-projects"), { credentials: "include" }); if (response.ok) { const data = await response.json(); setProjects(Array.isArray(data.items) ? data.items : []); } } catch { /* Customer project history is optional until signed in. */ }\n  }\n  useEffect(() => { void refreshProjects(); }, []);
 
   function toggle(key: ServiceKey) {
     setServices(old => old.includes(key) ? old.filter(x => x !== key) : [...old, key]);
@@ -114,7 +114,7 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
           <div style={{marginTop:20,paddingTop:16,borderTop:"1px solid #ffffff2b"}}><div className="dv-studio-muted">Estimated production total</div><div className="dv-studio-total">{money(total)}</div><p className="dv-studio-muted">Estimate based on the selected service menu. Final quote is confirmed by the production team after reviewing duration, complexity, revisions and deliverables. Taxes or third-party talent fees may change the final amount.</p>
           {selected.map(s=><div className="dv-studio-line" key={s.key}><span>{s.label}</span><strong>{money(s.price)}</strong></div>)}
           <button type="button" className="dv-studio-btn" style={{width:"100%",marginTop:16}} disabled={sending || !services.length} onClick={()=>void assignProject()}>{sending ? "Sending project…" : "Assign project to Dublu Vé Production →"}</button>
-          {notice && <div className="dv-studio-notice" role="status">{notice}</div>}{error && <div className="dv-studio-error" role="alert">{error}</div>}
+          {notice && <div className="dv-studio-notice" role="status">{notice}</div>}{error && <div className="dv-studio-error" role="alert">{error}</div>}\n          {projects.length > 0 && <div style={{marginTop:22,borderTop:"1px solid #ffffff2b",paddingTop:16}}><h3>Your production projects</h3>{projects.map(project=><div key={project.id} className="dv-studio-line" style={{alignItems:"center"}}><span><strong>{project.title}</strong><br/><span className="dv-studio-muted">{project.reference} · {project.status.replace("_"," ")}</span></span>{project.status === "READY" ? <a className="dv-studio-btn" href={apiUrl(`/production-projects/${project.id}/download`)} style={{textDecoration:"none",fontSize:12}}>Download</a> : <span className="dv-studio-muted">In progress</span>}</div>)}</div>}
           </div>
         </aside>
       </div>
