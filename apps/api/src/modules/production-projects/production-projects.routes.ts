@@ -28,7 +28,7 @@ productionProjectsRouter.post("/", asyncHandler(async (req, res) => {
   const duration = typeof body.duration === "string" ? body.duration.trim() : "";
   const brief = typeof body.brief === "string" ? body.brief.trim() : "";
   const bpm = Number(body.bpm);
-  const keys = Array.isArray(body.services) ? [...new Set(body.services.map((item: any) => typeof item?.key === "string" ? item.key : ""))] : [];
+  const keys: string[] = Array.isArray(body.services) ? Array.from(new Set<string>(body.services.map((item: unknown) => item && typeof item === "object" && "key" in item && typeof item.key === "string" ? item.key : ""))) : [];
   if (title.length < 2 || title.length > 100 || !genre || genre.length > 60 || !mood || mood.length > 60 ||
       !musicalKey || musicalKey.length > 30 || !Number.isInteger(bpm) || bpm < 60 || bpm > 200 ||
       !["15 seconds", "30 seconds", "60 seconds"].includes(duration) || brief.length > 1500 ||
