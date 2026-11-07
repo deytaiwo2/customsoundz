@@ -29,20 +29,38 @@ The source application already contains substantial workflows that remain availa
 Implemented on the integration branch:
 - A dedicated `ARTIST` role in the Prisma data model and registration API.
 - Public artist directory, artist profile read/update API and an artist profile editor in the creative-provider workspace.
-- An `ArtistProfile` record created during artist registration, including display name, biography, creative category/genre, portfolio metadata, rating and completed-job fields.
-- Artist registration questionnaire and role-specific workspace entry.
-- Artists are authorized to use the existing vendor/creative-provider APIs and workspace.
-- Dublu Vé branding and music/audio-focused public landing copy.
-- A Dublu Vé startup wordmark and background-audio consent copy. Existing EPHINTA audio preference keys are still read so saved user choices are not lost.
+- An `ArtistProfile` record created during artist registration, including display name, biography, creative category/genre and portfolio metadata.
+- Artist registration questionnaire and role-specific workspace entry. Artists can use the existing vendor/creative-provider service and booking workspace.
+- Customer catalogue, cart, checkout session and wallet-funded booking flow.
+- Wallet/escrow holds and an order delivery lifecycle for standalone audio bookings.
+- Private final audio deliverable uploads (MP3, WAV, M4A, AAC, OGG and FLAC; up to 25 MB per file) through the configured private storage adapter. Downloads are restricted to the booking customer, provider or administrator.
+- Provider delivery submission requires a fully funded order and at least one uploaded deliverable. Customers can approve delivery to release escrow or dispute it while funds remain held. Administrators can resolve a dispute by releasing or refunding the held amount; the resolution paths are idempotent and audited.
+- Existing event-linked bookings retain their assigned-verifier completion and escrow controls.
+- Existing marketplace, reviews, promotions, subscriptions, referrals, notifications, messaging, admin and optional event-planning modules.
+- Dublu Vé branding, startup wordmark, background-audio consent copy and Capacitor mobile foundations. The existing native app identifier is intentionally retained for install/update compatibility.
 
 Not yet complete and must not be represented as live:
-- Portfolio uploads, protected sample streaming and expiring signed audio URLs.
-- Secure final MP3 delivery and production handoff.
-- Verified-completion artist rankings and review aggregation.
+- Public artist sample/portfolio audio streaming and protected preview playback.
+- Verified-completion artist rankings and a complete review aggregation policy.
 - Vendor retainership lifecycle and the three-qualified-referral reward workflow.
-- Full customer UI wiring for every API workflow and end-to-end payment acceptance.
+- Automatic external payouts to provider bank accounts; internal wallet credit is not a bank transfer.
+- Live payment-provider acceptance, webhook verification and settlement reconciliation until the selected provider account and production secrets are configured and tested.
+- Full customer-facing UI wiring for every API capability.
 
-The artist portfolio field currently stores metadata only. Do not store master audio files or expose permanent public URLs in this JSON field. Private audio needs a separately configured private object-storage adapter and short-lived signed access.
+Artist portfolio metadata is not an audio file store. Do not put master audio files or permanent public URLs in that JSON field. Final order deliverables use the separate private audio-storage adapter; configure and test private object storage before production.
+
+## Latest automated verification
+
+The integration branch's latest verified commit is `e828e9cf2aed1613bc7a05210b054be5b8802ca6` (7 November 2026). GitHub Actions passed:
+- 39 browser end-to-end journeys.
+- API: 25 test files / 133 tests.
+- Web: 9 test files / 51 tests.
+- PostgreSQL 16 migration, regression/security checks and production web/API builds.
+- Android debug QA APK build and iOS Simulator build.
+
+The Android workflow artifact is named `dublu-ve-android-qa-debug-apk`. Download it from the [Android QA workflow run](https://github.com/deytaiwo2/customsoundz/actions/runs/42408316347). It is a debug QA APK, not a signed Play Store release. The iOS workflow output is a Simulator build, not an App Store-signed IPA.
+
+See [the Dublu Vé production-readiness gate](docs/PRODUCTION_READINESS.md) for launch blockers and required production configuration.
 
 ## Architecture
 
