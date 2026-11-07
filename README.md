@@ -62,6 +62,14 @@ The Android workflow artifact is named `dublu-ve-android-qa-debug-apk`. Download
 
 See [the Dublu Vé production-readiness gate](docs/PRODUCTION_READINESS.md) for launch blockers and required production configuration.
 
+## Music sample-to-production workflow
+
+The public landing page now includes an interactive music project studio: customers can set a genre, mood, key, tempo and preview length, hear a locally synthesized sketch, select production services and see an itemised NGN estimate. Signed-in customers can assign the brief to the Dublu Vé Production queue. Their workspace shows project progress and provides a protected final-audio download when the team marks the project ready.
+
+Administrators see a production queue in the signed-in workspace. They can move projects into production/review, cancel a request, and upload a final MP3/WAV/M4A/AAC/OGG/FLAC master (up to 25 MB). A successful upload changes the project to READY and creates an in-app customer notification. The private audio object is served only to the project owner or an administrator.
+
+The current service prices are **starter estimates** and require owner approval before paid customer commitments. The browser sample is a synthesized sketch, not a finished song or AI-generated production. See [Production Project Studio operations](docs/PRODUCTION_PROJECT_STUDIO.md) for the workflow, endpoints, pricing assumptions, and notification configuration requirements.
+
 ## Architecture
 
 - Node.js 20+ and npm workspaces.
