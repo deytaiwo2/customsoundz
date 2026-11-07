@@ -34,9 +34,20 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
     },
   ],
-  webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
-    url: baseURL,
-    timeout: 120_000,
-  },
+  webServer: [
+    ...(process.env.ESS_E2E_WITH_API === "true"
+      ? [{
+          command: "npm run dev -w apps/api",
+          url: "http://127.0.0.1:5000/health",
+          timeout: 120_000,
+          reuseExistingServer: !process.env.CI,
+        }]
+      : []),
+    {
+      command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
+      url: baseURL,
+      timeout: 120_000,
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 });

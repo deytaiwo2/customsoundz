@@ -1897,7 +1897,7 @@ export default function EnterpriseApp() {
   };
   const startRoleQuestionnaire = (role: SelfRegisterRole) => {
     setMenuOpen(false);
-    navigate(role === "CLIENT" ? "/plan" : `/join/${role.toLowerCase()}`);
+    navigate(role === "CLIENT" ? "/auth/signup?role=CLIENT" : `/join/${role.toLowerCase()}`);
   };
   const continueRoleQuestionnaire = (role: SelfRegisterRole, answers: Record<string, string>) => {
     setSelectedRole(role);
@@ -3186,8 +3186,8 @@ function AuthModal({
           )}
           {mode === "signup" && registrationStep === 1 && role === "CLIENT" && (
             <div className="ess-registration-note">
-              <strong>Your event-planning workspace is next.</strong>
-              <span>No business details are needed. Continue to choose the country and currency for your events.</span>
+              <strong>Your creative-services marketplace is next.</strong>
+              <span>No business details are needed. Continue to choose the country and currency for your bookings and wallet.</span>
             </div>
           )}
           {mode === "signup" && registrationStep === 1 && role === "ORGANIZATION" && (
@@ -3212,7 +3212,7 @@ function AuthModal({
                   checked={organizationMode === "SERVICE_PROVIDER"}
                   onChange={() => setOrganizationMode("SERVICE_PROVIDER")}
                 />
-                Provide services to event planners
+                Provide creative services to customers
               </label>
             </fieldset>
           )}

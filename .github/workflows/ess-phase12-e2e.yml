@@ -27,6 +27,7 @@ jobs:
       JWT_SECRET: ci-only-secret-change-me-0123456789abcdef0123456789abcdef
       APP_BASE_URL: http://localhost:3000
       CI: "true"
+      ESS_E2E_WITH_API: "true"
     services:
       postgres:
         image: postgres:16

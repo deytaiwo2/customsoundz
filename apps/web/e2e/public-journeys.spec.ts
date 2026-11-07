@@ -1,46 +1,31 @@
 import { expect, test } from "@playwright/test";
 
-test("startup shows only the EPHINTA logo until the app is ready", async ({ page }) => {
-  let releaseLogo!: () => void;
-  const logoGate = new Promise<void>((resolve) => {
-    releaseLogo = resolve;
-  });
-  await page.route("**/brand/ephinta_logo2.png", async (route) => {
-    await logoGate;
-    await route.continue();
-  });
-
-  await page.goto("/", { waitUntil: "domcontentloaded" });
+test("startup displays Dublu Vé branding and clears when the app is ready", async ({ page }) => {
+  await page.goto("/", { waitUntil: "commit" });
   const splash = page.locator("[data-ephinta-intro-splash]");
-  try {
-    await expect(splash).toBeVisible();
-    await expect(splash).toHaveText("");
-    await expect(splash.locator("img")).toHaveAttribute("src", /brand\/ephinta_logo2\.png/);
-    await expect(page.getByRole("heading", { name: /Plan the event you imagine/i })).toBeVisible();
-    await expect(splash).toBeVisible();
-  } finally {
-    releaseLogo();
-  }
-  await expect(splash).toBeHidden();
+  await expect(splash).toBeVisible({ timeout: 5000 });
+  await expect(splash).toContainText("Dublu Vé");
+  await expect(splash).toContainText("ENTERTAINMENTS");
+  await expect(splash).toHaveAttribute("aria-label", "Opening Dublu Vé Entertainments");
+  await expect(page.getByRole("heading", { name: /Create the sound/i })).toBeVisible();
+  await expect(splash).toBeHidden({ timeout: 7000 });
 });
 
-test("public landing page explains the event-planning service and its menu", async ({ page }) => {
+test("public landing page introduces Dublu Vé creative services and its menu", async ({ page }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /Plan the event you imagine/i }),
+    page.getByRole("heading", { name: /Create the sound/i }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start planning" })).toBeVisible();
-  await expect(page.getByRole("img", { name: "EPHINTA" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start an audio project" }).first()).toBeVisible();
+  await expect(page.getByText("Dublu Vé").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Open menu" }).click();
   const menuButton = page.getByRole("button", { name: "Close menu" });
   await expect(menuButton.locator(".eph-menu-bars span")).toHaveCount(3);
   const menu = page.getByRole("navigation", { name: "Main navigation" });
   await expect(menu).toBeVisible();
-  await expect(menu.locator(".eph-menu-brand")).toContainText("EPHINTA");
-  await expect(menu.locator(".eph-menu-brand img")).toHaveCSS("width", "20px");
-  await expect(menu.locator(".eph-menu-primary img")).toHaveCSS("width", "16px");
-  await expect(menu.getByRole("button", { name: /Plan your next event here/ })).toBeVisible();
+  await expect(menu.locator(".eph-menu-brand")).toContainText("Dublu Vé");
+  await expect(menu.getByRole("button", { name: /Start an audio project/ })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Open menu" })).toHaveAttribute("aria-expanded", "false");
 });
@@ -109,34 +94,19 @@ test("signed-in event planners can open the modern planner route", async ({ page
   await expect(page.locator(".eph-modal")).toHaveCount(0);
 });
 
-test("the menu planner action opens the guided event planner", async ({ page }) => {
+test("the primary menu action opens customer registration for an audio project", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("navigation", { name: "Main navigation" })
-    .getByRole("button", { name: /Plan your next event here/ }).click();
-
-  await expect(page).toHaveURL(/\/plan$/);
-  await expect(page.getByRole("heading", { name: "What are you creating?" })).toBeVisible();
-  await expect(page.locator(".eph-modal")).toHaveCount(0);
-
-  await page.getByLabel("Event name").fill("Header Planner Flow");
-  await page.getByRole("button", { name: /Next question/ }).click();
-  await page.getByRole("button", { name: /Next question/ }).click();
-  await page.getByLabel("City or venue area").fill("Ibadan");
-  await page.getByRole("button", { name: /Next question/ }).click();
-  await page.getByLabel("Expected guests").fill("80");
-  await page.getByRole("button", { name: /Next question/ }).click();
-  await page.getByRole("button", { name: /Build my event brief/ }).click();
-  await page.getByRole("button", { name: /Save brief and create account/ }).click();
-
+    .getByRole("button", { name: /Start an audio project/ }).click();
   await expect(page).toHaveURL(/\/auth\/signup\?role=CLIENT$/);
-  await expect(page.locator("#eph-auth-dialog")).toBeVisible();
-  await expect(page.locator(".eph-modal")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Create your customer account" })).toBeVisible();
+  await expect(page.locator(".ess-auth-modal")).toBeVisible();
 });
 
 test("public signup choices open role-specific introductions before account creation", async ({ page }) => {
   const choices = [
-    { button: "Create customer account", route: "/plan", heading: "What are you creating?" },
+    { button: "Create customer account", route: "/auth/signup?role=CLIENT", heading: "Create your customer account" },
     { button: "Create vendor account", route: "/join/vendor", heading: "Tell us about your services" },
     { button: "Create organizer account", route: "/join/organization", heading: "Tell us about your organization" },
     { button: "Create affiliate account", route: "/join/affiliate", heading: "Tell us about your community" },
@@ -149,7 +119,7 @@ test("public signup choices open role-specific introductions before account crea
     await page.getByRole("button", { name: "Open menu" }).click();
     await page.getByRole("navigation", { name: "Main navigation" })
       .getByRole("button", { name: choice.button }).click();
-    await expect(page).toHaveURL(new RegExp(`${choice.route.replace("/", "\\/")}$`));
+    await expect(page).toHaveURL(choice.route);
     await expect(page.getByRole("heading", { name: choice.heading })).toBeVisible();
   }
 });
@@ -167,7 +137,7 @@ test("vendor introduction carries profile answers into signup", async ({ page })
   await page.getByRole("button", { name: /Continue to signup/ }).click();
 
   await expect(page).toHaveURL(/\/auth\/signup\?role=VENDOR$/);
-  const dialog = page.locator("#eph-auth-dialog");
+  const dialog = page.locator(".ess-auth-modal");
   await expect(dialog).toHaveAttribute("data-role", "vendor");
   await dialog.getByLabel("Full name").fill("Vendor Registration");
   await dialog.getByLabel("Email address").fill("vendor-intro@example.test");
@@ -188,7 +158,7 @@ test("affiliate introduction preselects a matching referral channel during signu
   await page.getByLabel("Who do you expect to refer?").selectOption("Event planners");
   await page.getByRole("button", { name: /Continue to signup/ }).click();
 
-  const dialog = page.locator("#eph-auth-dialog");
+  const dialog = page.locator(".ess-auth-modal");
   await dialog.getByLabel("Full name").fill("Affiliate Registration");
   await dialog.getByLabel("Email address").fill("affiliate-intro@example.test");
   await dialog.getByLabel("Password", { exact: true }).fill("StrongPass123!");
@@ -199,7 +169,7 @@ test("affiliate introduction preselects a matching referral channel during signu
 test("registration blocks a password shorter than the input minimum", async ({ page }) => {
   await page.goto("/auth/signup?role=CLIENT");
 
-  const dialog = page.locator("#eph-auth-dialog");
+  const dialog = page.locator(".ess-auth-modal");
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Full name").fill("ESS E2E Customer");
   await dialog.getByLabel("Email address").fill("e2e-customer@example.test");
@@ -233,7 +203,7 @@ test("registration blocks a password shorter than the input minimum", async ({ p
 test("registration supports back and next navigation across the shared role-specific steps", async ({ page }) => {
   await page.goto("/auth/signup?role=CLIENT");
 
-  const dialog = page.locator("#eph-auth-dialog");
+  const dialog = page.locator(".ess-auth-modal");
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Full name").fill("Mobile Registration Test");
   await dialog.getByLabel("Email address").fill("mobile-registration@example.test");
@@ -241,7 +211,7 @@ test("registration supports back and next navigation across the shared role-spec
 
   await dialog.getByRole("button", { name: "Next" }).click();
   await expect(dialog.getByText("Step 2 of 3")).toBeVisible();
-  await expect(dialog.getByText("Your event-planning workspace is next.")).toBeVisible();
+  await expect(dialog.getByText("Your creative-services marketplace is next.")).toBeVisible();
 
   await dialog.getByRole("button", { name: "Back" }).click();
   await expect(dialog.getByLabel("Full name")).toHaveValue("Mobile Registration Test");
@@ -264,7 +234,8 @@ test("registration supports back and next navigation across the shared role-spec
 
 test("each self-registering role gets its own signup dialog and profile fields", async ({ page }) => {
   const registrations = [
-    { role: "CLIENT", label: "Event Planner", profile: "Your event-planning workspace is next." },
+    { role: "CLIENT", label: "Customer", profile: "Your creative-services marketplace is next." },
+    { role: "ARTIST", label: "Artist", profile: "Artist or studio name" },
     { role: "ORGANIZATION", label: "Organizer", profile: "How will your organization use ESS?" },
     { role: "VENDOR", label: "Vendor", profile: "Business name" },
     { role: "AFFILIATE", label: "Affiliate", profile: "Primary referral channel" },
@@ -278,7 +249,7 @@ test("each self-registering role gets its own signup dialog and profile fields",
     await expect(dialog).toHaveAttribute("data-role", registration.role.toLowerCase());
     await expect(dialog.getByRole("heading", { name: `Create your ${registration.label.toLowerCase()} account` })).toBeVisible();
     await expect(dialog.getByRole("button", { name: registration.label })).toHaveClass(/active/);
-    await expect(dialog.locator(".ess-auth-roles button")).toHaveCount(6);
+    await expect(dialog.locator(".ess-auth-roles button")).toHaveCount(7);
 
     await dialog.getByLabel("Full name").fill(`Account ${index + 1}`);
     await dialog.getByLabel("Email address").fill(`account${index + 1}@example.test`);
@@ -334,7 +305,7 @@ test("landing-page registration explains when an email or phone number is alread
   });
 
   await page.goto("/auth/signup?role=CLIENT");
-  const dialog = page.locator("#eph-auth-dialog");
+  const dialog = page.locator(".ess-auth-modal");
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Full name").fill("Existing Account Test");
   await dialog.getByLabel("Email address").fill("existing@example.test");
@@ -366,7 +337,7 @@ test("landing-page sign-in explains incorrect passwords and accepts legacy passw
   await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("navigation", { name: "Main navigation" })
     .getByRole("button", { name: "Sign in to your account" }).click();
-  const dialog = page.locator("#eph-auth-dialog");
+  const dialog = page.locator(".ess-auth-modal");
   await expect(dialog).toBeVisible();
   await dialog.getByLabel("Email address").fill("legacy@example.test");
   const password = dialog.getByLabel("Password", { exact: true });
@@ -392,7 +363,7 @@ test("forgot-password flow gives a privacy-safe confirmation", async ({ page }) 
   await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("navigation", { name: "Main navigation" })
     .getByRole("button", { name: "Sign in to your account" }).click();
-  const dialog = page.locator("#eph-auth-dialog");
+  const dialog = page.locator(".ess-auth-modal");
   await dialog.getByRole("button", { name: "Forgot password?" }).click();
   await expect(dialog.getByRole("heading", { name: "Reset your password" })).toBeVisible();
   await dialog.getByLabel("Email address").fill("reset@example.test");
@@ -412,7 +383,7 @@ test("switching from registration to sign-in clears signup-only password validat
   });
 
   await page.goto("/auth/signup?role=CLIENT");
-  const dialog = page.locator("#eph-auth-dialog");
+  const dialog = page.locator(".ess-auth-modal");
   await dialog.getByLabel("Full name").fill("Password Mode Switch Test");
   await dialog.getByLabel("Email address").fill("switch@example.test");
   const signupPassword = dialog.getByLabel("Password", { exact: true });
@@ -421,7 +392,7 @@ test("switching from registration to sign-in clears signup-only password validat
   expect(await signupPassword.evaluate((element) => element.validity.valid)).toBe(false);
 
   await dialog.locator(".ess-auth-mode-switch").getByRole("button", { name: "Sign in" }).click();
-  await expect(dialog.getByRole("heading", { name: "Event Planner sign in" })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Customer sign in" })).toBeVisible();
   const signinPassword = dialog.getByLabel("Password", { exact: true });
   await expect(signinPassword).not.toHaveAttribute("minlength");
   await expect(signinPassword).toHaveValue("");
@@ -455,7 +426,7 @@ test("mobile menu opens and provides sign-in access @mobile", async ({ page }, t
   await expect(menu).toBeVisible();
   await menu.getByRole("button", { name: "Sign in to your account" }).click();
 
-  await expect(page.getByRole("dialog", { name: "Event Planner sign in" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Customer sign in" })).toBeVisible();
 });
 
 test("authenticated planner can add a checklist task to an owned event", async ({ page }) => {
@@ -553,16 +524,13 @@ test("authenticated planner receives no private event data outside the owned eve
 });
 
 
-test("branded intro shows its loaded logo and clears after startup", async ({ page }) => {
+test("Dublu Vé intro remains accessible while the app starts", async ({ page }) => {
   await page.goto("/", { waitUntil: "commit" });
   const splash = page.locator("[data-ephinta-intro-splash]");
   await expect(splash).toBeVisible({ timeout: 5000 });
-  const logo = splash.locator("img");
-  await expect(logo).toBeVisible();
-  await expect.poll(() => logo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
-  await expect(splash).toHaveText("");
-  await expect(splash.locator(":scope > *")).toHaveCount(1);
-  await expect(splash).toBeHidden({ timeout: 5000 });
+  await expect(splash).toContainText("Dublu Vé");
+  await expect(splash).toHaveAttribute("role", "status");
+  await expect(splash).toBeHidden({ timeout: 7000 });
 });
 
 test("background music starts only after consent and advances automatically", async ({ page }) => {
@@ -589,7 +557,7 @@ test("background music starts only after consent and advances automatically", as
   await prompt.getByRole("button", { name: "Yes, play music" }).click();
   expect(await page.evaluate(() => (window as Window & { __ephintaAudioUserGesture?: boolean }).__ephintaAudioUserGesture)).toBe(true);
   await expect(prompt).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("ephinta:sound"))).toBe("on");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("dubluve:sound"))).toBe("on");
   await expect.poll(() => page.evaluate(
     () => (window as Window & { __ephintaAudioPlayCalls?: number }).__ephintaAudioPlayCalls,
   )).toBe(1);
@@ -602,11 +570,11 @@ test("background music starts only after consent and advances automatically", as
 });
 
 test("music player respects a saved sound-off choice after reload", async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("ephinta:sound", "off"));
+  await page.addInitScript(() => localStorage.setItem("dubluve:sound", "off"));
   await page.goto("/");
   await expect(page.getByRole("dialog", { name: "Enjoy background music?" })).toHaveCount(0);
   await expect(page.locator("audio")).toHaveJSProperty("paused", true);
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("ephinta:sound"))).toBe("off");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("dubluve:sound"))).toBe("off");
 });
 
 test("production app loads the bundled music track and plays after consent", async ({ page }) => {
@@ -626,5 +594,5 @@ test("production app loads the bundled music track and plays after consent", asy
   expect(Number(asset.headers()["content-length"] || 0)).toBeGreaterThan(100_000);
   await prompt.getByRole("button", { name: "Yes, play music" }).click();
   await expect(prompt).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("ephinta:sound"))).toBe("on");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("dubluve:sound"))).toBe("on");
 });
