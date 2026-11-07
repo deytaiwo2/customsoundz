@@ -37,7 +37,11 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
   async function refreshProjects() {
     try { const data = await api<{ items: ProjectRow[] }>("/production-projects"); setProjects(Array.isArray(data.items) ? data.items : []); } catch { /* Customer project history is optional until signed in. */ }
   }
-  useEffect(() => {\n    try { const saved = localStorage.getItem("dubluve:pending-production-project"); if (saved) { const draft = JSON.parse(saved); setTitle(draft.title || "My first Dublu Vé track"); setGenre(draft.genre || "Afrobeats"); setMood(draft.mood || "Uplifting"); setKey(draft.musicalKey || "C major"); setBpm(Number(draft.bpm) || 104); setDuration(draft.duration || "30 seconds"); setBrief(draft.brief || ""); if (Array.isArray(draft.services)) setServices(draft.services.map((item: { key: ServiceKey }) => item.key).filter((key: string) => SERVICES.some(service => service.key === key))); } } catch { /* Ignore an invalid local draft. */ }\n    void refreshProjects();\n    return () => { timers.current.forEach(window.clearTimeout); void audioContext.current?.close(); };\n  }, []);
+  useEffect(() => {
+    try { const saved = localStorage.getItem("dubluve:pending-production-project"); if (saved) { const draft = JSON.parse(saved); setTitle(draft.title || "My first Dublu Vé track"); setGenre(draft.genre || "Afrobeats"); setMood(draft.mood || "Uplifting"); setKey(draft.musicalKey || "C major"); setBpm(Number(draft.bpm) || 104); setDuration(draft.duration || "30 seconds"); setBrief(draft.brief || ""); if (Array.isArray(draft.services)) setServices(draft.services.map((item: { key: ServiceKey }) => item.key).filter((key: string) => SERVICES.some(service => service.key === key))); } } catch { /* Ignore an invalid local draft. */ }
+    void refreshProjects();
+    return () => { timers.current.forEach(window.clearTimeout); void audioContext.current?.close(); };
+  }, []);
 
   function toggle(key: ServiceKey) {
     setServices(old => old.includes(key) ? old.filter(x => x !== key) : [...old, key]);
