@@ -124,8 +124,8 @@ export default function BookingWorkPanel({ mode }: { mode: Mode }) {
           <h2>{mode === "provider" ? "Bookings & delivery" : "My orders"}</h2>
           <p className="ess-muted">
             {mode === "provider"
-              ? "Track paid orders, submit delivery notes and monitor customer approval."
-              : "Follow order progress, review delivery notes and approve or dispute completed work."}
+              ? "Upload audio deliverables, submit delivery notes and monitor customer approval."
+              : "Track each order, download protected audio files and approve or dispute the submitted delivery."}
           </p>
         </div>
         <button className="ess-outline-button" type="button" disabled={loading || Boolean(busy)} onClick={() => void refresh()}>
@@ -181,7 +181,7 @@ export default function BookingWorkPanel({ mode }: { mode: Mode }) {
                   )}
                   {mode === "customer" && !booking.eventId && (
                     <div style={{ display: "grid", gap: 8 }}>
-                      <button className="ess-primary" type="button" disabled={busy === booking.id} onClick={() => void perform(booking.id, "Delivery approved. Funds released to the provider.", `/payments/bookings/${booking.id}/approve-delivery`, {})}>
+                      <button className="ess-primary" type="button" disabled={busy === booking.id || !booking.deliveryAssets?.length} onClick={() => void perform(booking.id, "Delivery approved. Funds released to the provider.", `/payments/bookings/${booking.id}/approve-delivery`, {})}>
                         {busy === booking.id ? "Processing…" : "Approve delivery & release escrow"}
                       </button>
                       <label>
