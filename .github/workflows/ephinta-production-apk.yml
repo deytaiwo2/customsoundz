@@ -171,5 +171,5 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            release-output/ephinta-production.apk
+            release-output/dublu-ve-production.apk
             release-output/SHA256SUMS.txt
