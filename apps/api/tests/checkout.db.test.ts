@@ -44,7 +44,7 @@ describe.skipIf(!run)("Dublu Vé standalone creative-service checkout (DB)", () 
       },
     });
     await prisma.vendorProfile.update({ where: { id: profile.id }, data: { verification: "VERIFIED" } });
-    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: customer.id } });
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { userId_currency: { userId: customer.id, currency: "NGN" } } });
     await prisma.wallet.update({ where: { id: wallet.id }, data: { availableMinor: 500000n, escrowMinor: 0n } });
 
     try {
