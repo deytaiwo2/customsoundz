@@ -16,16 +16,16 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: null,
       manifest: {
-        name: "EPHINTA",
-        short_name: "EPHINTA",
-        description: "Event planning, vendors, guests, tasks, budgets and event operations.",
+        name: "Dublu Vé Entertainments",
+        short_name: "Dublu Vé",
+        description: "Music artists, custom songs, brand jingles, voice-over and professional audio production.",
         start_url: "/",
         scope: "/",
         display: "standalone",
         background_color: "#ffffff",
         theme_color: "#f97316",
         icons: [
-          { src: "/icons/ess-icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" },
+          { src: "/brand/dublu-ve-mark.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" },
           { src: "/icons/ess-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
           { src: "/icons/ess-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
         ]
@@ -34,7 +34,7 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
       },
-      includeAssets: ["offline.html", "icons/*.svg", "icons/*.png"]
+      includeAssets: ["offline.html", "brand/dublu-ve-mark.svg"]
     })
   ],
 

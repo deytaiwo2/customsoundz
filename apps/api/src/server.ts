@@ -4,7 +4,7 @@ import { logger } from "./lib/logger";
 import { prisma } from "./lib/prisma";
 import { reconcilePendingPayments } from "./modules/payments/payments.routes";
 
-const server = createApp().listen(env.PORT, () => logger.info(`ESS API listening on :${env.PORT}`));
+const server = createApp().listen(env.PORT, () => logger.info(`Dublu Vé API listening on :${env.PORT}`));
 
 let reconciliationInProgress = false;
 const reconciliationTimer = env.NODE_ENV === "test"

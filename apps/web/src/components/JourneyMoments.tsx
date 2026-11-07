@@ -95,7 +95,7 @@ const ROLE_ONBOARDING: Record<OnboardingRole, RoleOnboarding> = {
     steps: [
       { kicker: "Access", title: "Review your assigned work", body: "Your consultant workspace displays operational updates and notifications available to your account.", visual: "▤" },
       { kicker: "Coordinate", title: "Follow event and readiness updates", body: "Use the notices to keep track of assigned activity. If you need a new assignment or broader access, request it from an administrator.", visual: "↗" },
-      { kicker: "Support", title: "Escalate blockers promptly", body: "Keep sensitive customer and payment information within approved EPHINTA channels and report operational blockers to the platform team.", visual: "✓" },
+      { kicker: "Support", title: "Escalate blockers promptly", body: "Keep sensitive customer and payment information within approved Dublu Vé channels and report operational blockers to the platform team.", visual: "✓" },
     ],
     finishLabel: "Open consultant workspace",
   },
