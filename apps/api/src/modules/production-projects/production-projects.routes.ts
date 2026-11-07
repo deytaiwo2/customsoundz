@@ -106,7 +106,7 @@ productionProjectsRouter.get("/:projectId/download", asyncHandler(async (req, re
   const bytes = await readAudioDelivery(project.deliveryStorageRef);
   res.setHeader("Content-Type", project.deliveryMimeType || "application/octet-stream");
   res.setHeader("Content-Length", bytes.length);
-  res.setHeader("Content-Disposition", `attachment; filename="${(project.deliveryFileName || "Dublu-Ve-audio").replace(/["\\r\\n]/g, "")}"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${(project.deliveryFileName || "Dublu-Ve-audio").replace(/["\r\n]/g, "")}"`);
   res.setHeader("Cache-Control", "private, no-store");
   res.send(bytes);
 }));
