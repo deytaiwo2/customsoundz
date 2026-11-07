@@ -20,11 +20,11 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://dublu-ve-web.onrender.com
+        value: https://dublu-ve-web-k070.onrender.com
       - key: APP_BASE_URL
-        value: https://dublu-ve-web.onrender.com
+        value: https://dublu-ve-web-k070.onrender.com
       - key: API_BASE_URL
-        value: https://dublu-ve-api.onrender.com
+        value: https://dublu-ve-api-k070.onrender.com
       - key: PAYMENT_MODE
         value: test
       - key: DEFAULT_CURRENCY
@@ -39,7 +39,7 @@ services:
     staticPublishPath: apps/web/dist
     envVars:
       - key: VITE_API_URL
-        value: https://dublu-ve-api.onrender.com/api/v1
+        value: https://dublu-ve-api-k070.onrender.com/api/v1
 
 databases:
   - name: dublu-ve-postgres
