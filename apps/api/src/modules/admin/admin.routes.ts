@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { asyncHandler } from "../../lib/async";
 import { requireAuth, requireRole } from "../../middleware/auth";
+import { refundDisputedBookingEscrow, releaseBookingEscrow } from "../payments/escrow.service";
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole("ADMIN"));
@@ -37,6 +38,44 @@ adminRouter.patch("/listings/:listingId/moderation", asyncHandler(async (req, re
     },
   });
   res.json({ listing: updated });
+}));
+
+/** Resolve a customer/provider dispute after reviewing the booking evidence. */
+adminRouter.post("/bookings/:bookingId/resolve-dispute", asyncHandler(async (req, res) => {
+  const action = typeof req.body?.action === "string" ? req.body.action.toUpperCase() : "";
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (!["RELEASE", "REFUND"].includes(action)) {
+    return res.status(400).json({ error: { code: "INVALID_RESOLUTION", message: "action must be RELEASE or REFUND" } });
+  }
+  if (reason.length < 10 || reason.length > 1000) {
+    return res.status(400).json({ error: { code: "INVALID_REASON", message: "Provide a resolution reason between 10 and 1000 characters" } });
+  }
+  const booking = await prisma.booking.findUnique({
+    where: { id: req.params.bookingId },
+    select: { id: true, status: true, eventId: true },
+  });
+  if (!booking) return res.status(404).json({ error: { code: "BOOKING_NOT_FOUND", message: "Booking not found" } });
+  if (booking.status !== "DISPUTED") {
+    return res.status(409).json({ error: { code: "DISPUTE_REQUIRED", message: "Only disputed bookings can be resolved here" } });
+  }
+  if (action === "RELEASE" && booking.eventId) {
+    return res.status(409).json({ error: { code: "EVENT_VERIFIER_REQUIRED", message: "Event-linked escrow remains subject to the assigned verifier workflow" } });
+  }
+
+  const result = action === "REFUND"
+    ? await refundDisputedBookingEscrow(booking.id, req.user!.id, reason)
+    : await releaseBookingEscrow(booking.id, req.user!.id, { allowDisputedAdmin: true });
+
+  await prisma.auditLog.create({
+    data: {
+      actorId: req.user!.id,
+      action: "BOOKING_DISPUTE_RESOLVED",
+      entity: "Booking",
+      entityId: booking.id,
+      meta: { resolution: action, reason: reason.slice(0, 1000) },
+    },
+  });
+  res.json({ ...result, resolution: action, reason });
 }));
 
 adminRouter.get("/overview", asyncHandler(async (_req, res) => {

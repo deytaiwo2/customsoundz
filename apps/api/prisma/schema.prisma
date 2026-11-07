@@ -95,6 +95,7 @@ enum BookingStatus {
   PENDING
   PAID
   CONFIRMED
+  DELIVERED
   FULFILLED
   CANCELLED
   DISPUTED
@@ -497,6 +498,10 @@ model Booking {
   totalMinor      BigInt
   paidMinor       BigInt         @default(0)
   notes           String?
+  deliveryNote    String?
+  deliveredAt     DateTime?
+  disputedAt      DateTime?
+  disputeReason   String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -510,6 +515,7 @@ model Booking {
 
   @@index([buyerId])
   @@index([vendorId, status])
+  @@index([status, deliveredAt])
 }
 
 

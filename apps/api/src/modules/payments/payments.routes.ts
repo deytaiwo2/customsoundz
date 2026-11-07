@@ -973,6 +973,100 @@ paymentsRouter.post(
   }),
 );
 
+/** Provider marks a fully funded, standalone audio order as delivered. */
+paymentsRouter.post(
+  "/bookings/:id/deliver",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const note = typeof req.body?.deliveryNote === "string" ? req.body.deliveryNote.trim() : "";
+    if (note.length < 10 || note.length > 2000) {
+      throw new HttpError(400, "INVALID_DELIVERY_NOTE", "Provide a delivery note between 10 and 2000 characters.");
+    }
+    const booking = await prisma.booking.findFirst({
+      where: { id: req.params.id, vendor: { userId: req.user!.id } },
+    });
+    if (!booking) throw new HttpError(404, "BOOKING_NOT_FOUND", "Provider booking not found");
+    if (booking.eventId) {
+      throw new HttpError(409, "EVENT_BOOKING_WORKFLOW", "Event-linked bookings are completed through the assigned verifier workflow.");
+    }
+    if (booking.paidMinor !== booking.totalMinor) {
+      throw new HttpError(409, "BOOKING_NOT_FULLY_FUNDED", "The customer must complete the agreed payment before delivery can be submitted.");
+    }
+    if (booking.status !== BookingStatus.PAID && booking.status !== BookingStatus.CONFIRMED) {
+      throw new HttpError(409, "INVALID_DELIVERY_STATE", `Cannot submit delivery while booking is ${booking.status.toLowerCase()}.`);
+    }
+    const updated = await prisma.booking.updateMany({
+      where: { id: booking.id, status: booking.status, eventId: null, paidMinor: booking.totalMinor },
+      data: { status: BookingStatus.DELIVERED, deliveryNote: note, deliveredAt: new Date() },
+    });
+    if (updated.count !== 1) throw new HttpError(409, "BOOKING_CHANGED", "The booking changed before delivery could be submitted.");
+    await prisma.auditLog.create({
+      data: {
+        actorId: req.user!.id,
+        action: "BOOKING_DELIVERED",
+        entity: "Booking",
+        entityId: booking.id,
+        meta: { note: note.slice(0, 500) },
+      },
+    });
+    const fresh = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    res.json({ booking: { id: fresh.id, status: fresh.status, deliveryNote: fresh.deliveryNote, deliveredAt: fresh.deliveredAt } });
+  }),
+);
+
+/** Customer disputes a submitted delivery; escrow remains held pending admin review. */
+paymentsRouter.post(
+  "/bookings/:id/dispute",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    if (reason.length < 10 || reason.length > 1000) {
+      throw new HttpError(400, "INVALID_DISPUTE_REASON", "Provide a dispute reason between 10 and 1000 characters.");
+    }
+    const booking = await prisma.booking.findFirst({
+      where: { id: req.params.id, buyerId: req.user!.id },
+      select: { id: true, eventId: true, status: true },
+    });
+    if (!booking) throw new HttpError(404, "BOOKING_NOT_FOUND", "Customer booking not found");
+    if (booking.eventId) throw new HttpError(409, "EVENT_BOOKING_WORKFLOW", "Event-linked disputes must be handled through event support.");
+    if (booking.status !== BookingStatus.DELIVERED) {
+      throw new HttpError(409, "INVALID_DISPUTE_STATE", "Only a delivered audio order can be disputed.");
+    }
+    const updated = await prisma.booking.updateMany({
+      where: { id: booking.id, buyerId: req.user!.id, status: BookingStatus.DELIVERED, eventId: null },
+      data: { status: BookingStatus.DISPUTED, disputedAt: new Date(), disputeReason: reason },
+    });
+    if (updated.count !== 1) throw new HttpError(409, "BOOKING_CHANGED", "The booking changed before the dispute was recorded.");
+    await prisma.auditLog.create({
+      data: {
+        actorId: req.user!.id,
+        action: "BOOKING_DISPUTED",
+        entity: "Booking",
+        entityId: booking.id,
+        meta: { reason: reason.slice(0, 500) },
+      },
+    });
+    res.status(201).json({ bookingId: booking.id, status: BookingStatus.DISPUTED, message: "The dispute is recorded. Funds remain in escrow pending review." });
+  }),
+);
+
+/** Customer accepts a standalone delivery and releases its held escrow. */
+paymentsRouter.post(
+  "/bookings/:id/approve-delivery",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const booking = await prisma.booking.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, buyerId: true, eventId: true },
+    });
+    if (!booking) throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking not found");
+    if (booking.buyerId !== req.user!.id) throw new HttpError(403, "FORBIDDEN", "Only the customer who placed this order can approve delivery");
+    if (booking.eventId) throw new HttpError(409, "EVENT_BOOKING_WORKFLOW", "Event-linked bookings are released by the assigned lead verifier.");
+    const result = await releaseBookingEscrow(booking.id, req.user!.id);
+    res.json(result);
+  }),
+);
+
 /** The assigned verifier releases event escrow after final completion. */
 paymentsRouter.post(
   "/bookings/:id/release",
