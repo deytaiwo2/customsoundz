@@ -147,21 +147,22 @@ checkoutRouter.post("/checkout-sessions", requireAuth, asyncHandler(async (req, 
   if (cart.items.length === 0) throw new HttpError(400, "EMPTY_CART", "Add at least one verified vendor service before checkout");
   if (cart.eventId && eventId && cart.eventId !== eventId) throw new HttpError(409, "EVENT_MISMATCH", "Cart and checkout event do not match");
 
+  // Dublu Vé orders are independent audio-service bookings. Event linkage is
+  // optional and retained only for customers who want an event production brief.
   const checkoutEventId = cart.eventId ?? eventId;
-  if (!checkoutEventId) {
-    throw new HttpError(400, "EVENT_REQUIRED", "Choose an event before starting checkout");
-  }
-  const event = await ownedEvent(req.user!.id, checkoutEventId);
-  if (!event) throw new HttpError(404, "EVENT_REQUIRED", "Choose an event before starting checkout");
-  if (event.status === "COMPLETED" || event.status === "CANCELLED") {
+  const event = checkoutEventId ? await ownedEvent(req.user!.id, checkoutEventId) : null;
+  if (checkoutEventId && !event) throw new HttpError(404, "EVENT_REQUIRED", "The linked event is unavailable");
+  if (event && (event.status === "COMPLETED" || event.status === "CANCELLED")) {
     throw new HttpError(409, "INVALID_EVENT_STATE", "Cannot book services for a completed or cancelled event");
   }
-  const readiness = await prisma.eventReadiness.findUnique({
-    where: { eventId: event.id },
-    select: { assignedVerifierId: true },
-  });
-  if (!readiness?.assignedVerifierId) {
-    throw new HttpError(409, "VERIFIER_REQUIRED", "Select a lead verifier before starting checkout");
+  if (event) {
+    const readiness = await prisma.eventReadiness.findUnique({
+      where: { eventId: event.id },
+      select: { assignedVerifierId: true },
+    });
+    if (!readiness?.assignedVerifierId) {
+      throw new HttpError(409, "VERIFIER_REQUIRED", "Select a lead verifier before checking out an event-linked service");
+    }
   }
   for (const item of cart.items) {
     if (item.listing.status !== ListingStatus.ACTIVE) throw new HttpError(409, "LISTING_UNAVAILABLE", `${item.listing.title} is no longer available`);
@@ -179,7 +180,7 @@ checkoutRouter.post("/checkout-sessions", requireAuth, asyncHandler(async (req, 
       data: {
         userId: req.user!.id,
         cartId: cart.id,
-        eventId: event.id,
+        eventId: checkoutEventId,
         currency: cart.currency,
         subtotalMinor: subtotal,
         commissionMinor: commission,
@@ -257,16 +258,13 @@ checkoutRouter.post("/checkout-sessions/:id/pay-with-wallet", requireAuth, async
       throw new HttpError(410, "CHECKOUT_EXPIRED", "Checkout session has expired");
     }
     const eventId = session.eventId;
-    if (!eventId) {
-      throw new HttpError(409, "EVENT_REQUIRED", "Checkout session is not linked to an event");
-    }
-    const event = await tx.event.findFirst({
+    const event = eventId ? await tx.event.findFirst({
       where: { id: eventId, ownerId: req.user!.id, status: { notIn: ["COMPLETED", "CANCELLED"] } },
       include: { readiness: { select: { assignedVerifierId: true } } },
-    });
-    if (!event) throw new HttpError(409, "INVALID_EVENT_STATE", "Event is unavailable for checkout");
-    if (!event.readiness?.assignedVerifierId) {
-      throw new HttpError(409, "VERIFIER_REQUIRED", "Select a lead verifier before payment");
+    }) : null;
+    if (eventId && !event) throw new HttpError(409, "INVALID_EVENT_STATE", "Linked event is unavailable for checkout");
+    if (event && !event.readiness?.assignedVerifierId) {
+      throw new HttpError(409, "VERIFIER_REQUIRED", "Select a lead verifier before paying for an event-linked service");
     }
 
     const wallet = await tx.wallet.findUnique({
@@ -292,7 +290,7 @@ checkoutRouter.post("/checkout-sessions/:id/pay-with-wallet", requireAuth, async
       // A vendor-managed calendar becomes authoritative once slots exist for a listing.
       const configuredSlots = await tx.listingAvailability.count({ where: { listingId: listing.id } });
       if (configuredSlots > 0) {
-        if (!event.startsAt || !event.endsAt || event.endsAt <= event.startsAt) {
+        if (!event?.startsAt || !event?.endsAt || event.endsAt <= event.startsAt) {
           throw new HttpError(409, "EVENT_DATES_REQUIRED", `${item.title} requires an event with valid start and end dates`);
         }
         const slot = await tx.listingAvailability.findFirst({
@@ -333,16 +331,18 @@ checkoutRouter.post("/checkout-sessions/:id/pay-with-wallet", requireAuth, async
         },
       });
       bookings.push(booking);
-      await tx.eventServiceCheck.create({
-        data: {
-          eventId,
-          bookingId: booking.id,
-          listingId: listing.id,
-          label: listing.title,
-          category: listing.type,
-          status: "PENDING",
-        },
-      });
+      if (eventId) {
+        await tx.eventServiceCheck.create({
+          data: {
+            eventId,
+            bookingId: booking.id,
+            listingId: listing.id,
+            label: listing.title,
+            category: listing.type,
+            status: "PENDING",
+          },
+        });
+      }
       totalHeld += subtotal;
       await tx.ledgerEntry.create({
         data: {

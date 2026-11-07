@@ -285,17 +285,17 @@ export default function MarketplaceBrowse({
 
   return (
     <section className="ess-panel ess-marketplace">
-      <div className="ess-wallet-badge" style={{ marginBottom: 12 }}>TEST MODE — bookings are for sandbox/demo verification until live payment mode is enabled.</div>
+      <div className="ess-wallet-badge" style={{ marginBottom: 12 }}>Wallet checkout places the booking payment in escrow. External payment methods depend on the payment providers configured by the platform.</div>
       <div className="ess-marketplace-head">
         <div>
           <p className="ess-eyebrow">{t(locale, "marketplace.title")}</p>
-          <h2>Verified providers near your event</h2>
+          <h2>Find creative services and talent</h2>
           <p className="ess-muted">
-            Live catalog only — vendors you book appear on the go-live readiness board for verifier confirmation (all green by T−2h).
+            Browse verified creative providers, compare service details and place an order. Link an event only when your project needs event coordination.
           </p>
           {events.length > 0 && (
             <label style={{ display: "block", marginTop: 10, maxWidth: 420 }}>
-              Book against event (for verifier checklist)
+              Link to an event (optional)
               <select
                 value={eventId}
                 onChange={(e) => {
