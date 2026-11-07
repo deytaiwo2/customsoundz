@@ -30,6 +30,18 @@ curl -X PUT \
 
 - `GET /:projectId/download` — private customer/admin download. The route streams the object from configured private S3-compatible audio storage; it does not expose a public bucket URL.
 
+## Yuletide loved-one song offer
+
+The landing studio includes a seasonal Yuletide offer for original occasional songs dedicated to a loved one. It is available from launch through **31 December 2026 (Nigeria time)**:
+
+| Package | Rate per song | Package total |
+|---|---:|---:|
+| 1 song | ₦30,000 | ₦30,000 |
+| 2 songs | ₦25,000 | ₦50,000 |
+| 3 songs | ₦20,000 | ₦60,000 |
+
+Customers may optionally request personal storytelling based on a dedication, memory or story. The target maximum finished length for this option is **2 minutes 30 seconds**. Storytelling is recorded in the submitted production brief; the production team confirms the final creative scope and quote. The API recalculates package pricing from the selected quantity and rejects the campaign after the stated end date.
+
 ## Price menu and commercial approval
 
 The initial menu in the landing studio and API is an illustrative launch estimate in NGN:
@@ -41,7 +53,7 @@ The initial menu in the landing studio and API is an illustrative launch estimat
 - Mastering: ₦30,000
 - Studio recording session: ₦40,000
 
-These are starter estimates, not prices previously approved by the business owner. The production team must approve or replace them before accepting paid customer orders. The customer is told that the final quote is confirmed after reviewing complexity, duration, revisions, talent and deliverables. No payment is collected by this intake workflow; payment/escrow must be linked to an approved quote before production is commercially accepted.
+These are starter estimates, not prices previously approved by the business owner. The Yuletide package rates above are the campaign-specific prices requested for this offer. The production team must approve or replace them before accepting paid customer orders. The customer is told that the final quote is confirmed after reviewing complexity, duration, revisions, talent and deliverables. No payment is collected by this intake workflow; payment/escrow must be linked to an approved quote before production is commercially accepted.
 
 ## Notifications and limitations
 
