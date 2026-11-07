@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, downloadProtectedFile, uploadProtectedFile } from "../lib/api";
 
 type BookingItem = {
   id: string;
   quantity: number;
   listing?: { title?: string | null };
 };
+
+type DeliveryAsset = { id: string; fileName: string; mimeType: string; sizeBytes: string; createdAt: string };
 
 type Booking = {
   id: string;
@@ -18,6 +20,7 @@ type Booking = {
   deliveredAt?: string | null;
   disputedAt?: string | null;
   disputeReason?: string | null;
+  deliveryAssets?: DeliveryAsset[];
   vendor?: { businessName?: string | null };
   event?: { id: string; title: string } | null;
   items: BookingItem[];
@@ -40,6 +43,7 @@ export default function BookingWorkPanel({ mode }: { mode: Mode }) {
   const [items, setItems] = useState<Booking[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -59,6 +63,43 @@ export default function BookingWorkPanel({ mode }: { mode: Mode }) {
   }, [mode]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  const uploadDelivery = async (bookingId: string) => {
+    const file = selectedFiles[bookingId];
+    if (!file) return;
+    setBusy(bookingId);
+    setError("");
+    setNotice("");
+    try {
+      await uploadProtectedFile(
+        `/payments/bookings/${bookingId}/deliverables?fileName=${encodeURIComponent(file.name)}`,
+        file,
+      );
+      setSelectedFiles((current) => ({ ...current, [bookingId]: null }));
+      setNotice("Audio file uploaded securely. Submit your delivery note when the files are ready.");
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to upload this audio file.");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const downloadDelivery = async (bookingId: string, asset: DeliveryAsset) => {
+    setBusy(bookingId);
+    setError("");
+    try {
+      await downloadProtectedFile(
+        `/payments/bookings/${bookingId}/deliverables/${asset.id}`,
+        asset.fileName,
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to download this audio file.");
+    } finally {
+      setBusy("");
+    }
+  };
+
 
   const perform = async (id: string, action: string, path: string, body: Record<string, unknown>) => {
     setBusy(id);
@@ -92,7 +133,7 @@ export default function BookingWorkPanel({ mode }: { mode: Mode }) {
         </button>
       </div>
       <p className="ess-muted">
-        Audio-file upload and protected MP3/WAV download are not enabled yet. Delivery notes record workflow status only; they are not a substitute for secure file delivery.
+        Audio deliverables are stored privately. Only the customer, the provider on this booking and authorized administrators can retrieve them.
       </p>
       {notice && <p className="ess-toast" role="status">{notice}</p>}
       {error && <p className="ess-form-error" role="alert">{error}</p>}
@@ -121,6 +162,23 @@ export default function BookingWorkPanel({ mode }: { mode: Mode }) {
                   <strong>Delivery submitted</strong>
                   {booking.deliveredAt && <p className="ess-muted">{new Date(booking.deliveredAt).toLocaleString()}</p>}
                   <p>{booking.deliveryNote || "No delivery note supplied."}</p>
+                  {booking.deliveryAssets?.length ? (
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <strong>Audio files</strong>
+                      {booking.deliveryAssets.map((asset) => (
+                        <div key={asset.id} style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                          <span>{asset.fileName} <small className="ess-muted">({(Number(asset.sizeBytes) / (1024 * 1024)).toFixed(1)} MB)</small></span>
+                          {mode === "customer" && (
+                            <button className="ess-outline-button" type="button" disabled={busy === booking.id} onClick={() => void downloadDelivery(booking.id, asset)}>
+                              {busy === booking.id ? "Preparing…" : "Download audio"}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="ess-form-error" role="status">No audio file has been attached yet. The provider must upload the agreed deliverable before escrow can be released.</p>
+                  )}
                   {mode === "customer" && !booking.eventId && (
                     <div style={{ display: "grid", gap: 8 }}>
                       <button className="ess-primary" type="button" disabled={busy === booking.id} onClick={() => void perform(booking.id, "Delivery approved. Funds released to the provider.", `/payments/bookings/${booking.id}/approve-delivery`, {})}>
@@ -138,15 +196,37 @@ export default function BookingWorkPanel({ mode }: { mode: Mode }) {
                 </div>
               )}
 
-              {mode === "provider" && !booking.eventId && (booking.status === "PAID" || booking.status === "CONFIRMED") && (
+              {mode === "provider" && !booking.eventId && ["PAID", "CONFIRMED", "DELIVERED"].includes(booking.status) && (
                 <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
                   <label>
-                    Delivery note
-                    <textarea rows={3} minLength={10} maxLength={2000} value={notes[booking.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [booking.id]: event.target.value }))} placeholder="Describe the completed work and any next steps." />
+                    Upload audio deliverable (MP3, WAV, M4A, AAC, OGG or FLAC; max 25 MB per file)
+                    <input
+                      type="file"
+                      accept=".mp3,.wav,.m4a,.aac,.ogg,.flac,audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/ogg,audio/flac"
+                      onChange={(event) => setSelectedFiles((current) => ({ ...current, [booking.id]: event.target.files?.[0] || null }))}
+                    />
                   </label>
-                  <button className="ess-primary" type="button" disabled={busy === booking.id || (notes[booking.id] || "").trim().length < 10} onClick={() => void perform(booking.id, "Delivery note submitted for customer review.", `/payments/bookings/${booking.id}/deliver`, { deliveryNote: notes[booking.id] })}>
-                    {busy === booking.id ? "Submitting…" : "Submit delivery note"}
-                  </button>
+                  {selectedFiles[booking.id] && (
+                    <button className="ess-outline-button" type="button" disabled={busy === booking.id} onClick={() => void uploadDelivery(booking.id)}>
+                      {busy === booking.id ? "Uploading…" : `Upload ${selectedFiles[booking.id]!.name}`}
+                    </button>
+                  )}
+                  {booking.deliveryAssets?.length ? (
+                    <p className="ess-muted">{booking.deliveryAssets.length} audio file(s) attached to this booking.</p>
+                  ) : (
+                    <p className="ess-muted">Upload at least one audio file before submitting the delivery note.</p>
+                  )}
+                  {(booking.status === "PAID" || booking.status === "CONFIRMED") && (
+                    <>
+                      <label>
+                        Delivery note
+                        <textarea rows={3} minLength={10} maxLength={2000} value={notes[booking.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [booking.id]: event.target.value }))} placeholder="Describe the completed work and any next steps." />
+                      </label>
+                      <button className="ess-primary" type="button" disabled={busy === booking.id || !booking.deliveryAssets?.length || (notes[booking.id] || "").trim().length < 10} onClick={() => void perform(booking.id, "Audio delivery submitted for customer review.", `/payments/bookings/${booking.id}/deliver`, { deliveryNote: notes[booking.id] })}>
+                        {busy === booking.id ? "Submitting…" : "Submit audio delivery"}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 

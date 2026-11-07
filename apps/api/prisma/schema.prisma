@@ -194,6 +194,7 @@ model User {
   events           Event[]
   wallets          Wallet[]
   bookings         Booking[]             @relation("BuyerBookings")
+  uploadedDeliveryAssets BookingDeliveryAsset[]
   subscriptions    Subscription[]
   notifications    Notification[]
   sentMessages     Message[]             @relation("SentMessages")
@@ -512,10 +513,28 @@ model Booking {
   paymentRequests BookingPaymentRequest[]
   review       Review?
   dispatchJobs DispatchJob[]
+  deliveryAssets BookingDeliveryAsset[]
 
   @@index([buyerId])
   @@index([vendorId, status])
   @@index([status, deliveredAt])
+}
+
+
+model BookingDeliveryAsset {
+  id           String   @id @default(uuid())
+  bookingId    String
+  uploadedById String
+  storageRef   String   @unique
+  fileName     String
+  mimeType     String
+  sizeBytes    BigInt
+  createdAt    DateTime @default(now())
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([bookingId, createdAt])
+  @@index([uploadedById, createdAt])
 }
 
 

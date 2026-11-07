@@ -2,7 +2,7 @@
  * Multi-provider payment port (Paystack / Flutterwave / Stripe-ready).
  * Demo mode completes immediately; webhook endpoint mirrors production.
  */
-import { Router } from "express";
+import { Router, raw } from "express";
 import {
   BookingStatus,
   LedgerType,
@@ -33,6 +33,8 @@ import {
   verifyOpay,
 } from "./providers";
 import { releaseBookingEscrow } from "./escrow.service";
+import { readAudioDelivery, storeAudioDelivery, deleteAudioDelivery, AUDIO_CONTENT_TYPES } from "../../lib/audio-delivery-storage";
+
 import { reconciliationBackoffMs, reconciliationErrorCode, RECONCILIATION_LOCK_MS, RECONCILIATION_MAX_ATTEMPTS, RECONCILIATION_PROVIDER_MAX_WAIT_MS, RECONCILIATION_PROVIDER_MIN_INTERVAL_MS, reconciliationProviderNextAllowedAt } from "./reconciliationPolicy";
 import {
   assertVerifiedPayment,
@@ -973,6 +975,110 @@ paymentsRouter.post(
   }),
 );
 
+/** Upload a private audio deliverable for a funded standalone booking. */
+paymentsRouter.post(
+  "/bookings/:id/deliverables",
+  requireAuth,
+  requireRole("VENDOR"),
+  raw({ type: [...AUDIO_CONTENT_TYPES], limit: "25mb" }),
+  asyncHandler(async (req, res) => {
+    const bytes = Buffer.isBuffer(req.body) ? req.body : null;
+    if (!bytes) throw new HttpError(415, "AUDIO_BODY_REQUIRED", "Send the audio file as the raw request body.");
+    const contentType = (req.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    const booking = await prisma.booking.findFirst({
+      where: { id: req.params.id, vendor: { userId: req.user!.id } },
+      select: { id: true, status: true, eventId: true, paidMinor: true, totalMinor: true },
+    });
+    if (!booking) throw new HttpError(404, "BOOKING_NOT_FOUND", "Provider booking not found.");
+    if (booking.eventId) throw new HttpError(409, "EVENT_BOOKING_WORKFLOW", "Event-linked bookings use the assigned-verifier delivery workflow.");
+    if (booking.paidMinor !== booking.totalMinor) {
+      throw new HttpError(409, "BOOKING_NOT_FULLY_FUNDED", "The customer must complete the agreed payment before files can be delivered.");
+    }
+    if (![BookingStatus.PAID, BookingStatus.CONFIRMED, BookingStatus.DELIVERED].includes(booking.status)) {
+      throw new HttpError(409, "INVALID_DELIVERY_STATE", `Cannot upload files while booking is ${booking.status.toLowerCase()}.`);
+    }
+
+    const fileName = typeof req.query.fileName === "string" ? req.query.fileName : "audio-delivery";
+    const stored = await storeAudioDelivery({ bookingId: booking.id, bytes, contentType, fileName });
+    try {
+      const asset = await prisma.$transaction(async (tx) => {
+        const current = await tx.booking.findFirst({
+          where: { id: booking.id, vendor: { userId: req.user!.id } },
+          select: { id: true, status: true, eventId: true, paidMinor: true, totalMinor: true },
+        });
+        if (!current || current.eventId || current.paidMinor !== current.totalMinor ||
+          ![BookingStatus.PAID, BookingStatus.CONFIRMED, BookingStatus.DELIVERED].includes(current.status)) {
+          throw new HttpError(409, "BOOKING_CHANGED", "The booking changed before the audio file could be attached.");
+        }
+        const created = await tx.bookingDeliveryAsset.create({
+          data: {
+            bookingId: booking.id,
+            uploadedById: req.user!.id,
+            storageRef: stored.storageRef,
+            fileName: stored.fileName,
+            mimeType: stored.mimeType,
+            sizeBytes: BigInt(stored.sizeBytes),
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            actorId: req.user!.id,
+            action: "BOOKING_AUDIO_UPLOADED",
+            entity: "Booking",
+            entityId: booking.id,
+            meta: { assetId: created.id, fileName: created.fileName, mimeType: created.mimeType, sizeBytes: stored.sizeBytes },
+          },
+        });
+        return created;
+      });
+      res.status(201).json({
+        asset: {
+          id: asset.id,
+          fileName: asset.fileName,
+          mimeType: asset.mimeType,
+          sizeBytes: asset.sizeBytes.toString(),
+          createdAt: asset.createdAt,
+        },
+      });
+    } catch (error) {
+      await deleteAudioDelivery(stored.storageRef);
+      throw error;
+    }
+  }),
+);
+
+/** Download a booking deliverable only for its customer, provider, or an administrator. */
+paymentsRouter.get(
+  "/bookings/:id/deliverables/:assetId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const booking = await prisma.booking.findUnique({
+      where: { id: req.params.id },
+      include: { vendor: { select: { userId: true } } },
+    });
+    if (!booking) throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking not found.");
+    const isBuyer = booking.buyerId === req.user!.id;
+    const isProvider = booking.vendor.userId === req.user!.id;
+    const isAdmin = req.user!.role === "ADMIN";
+    if (!isBuyer && !isProvider && !isAdmin) throw new HttpError(403, "FORBIDDEN", "You cannot access this booking's audio files.");
+    if (isBuyer && ![BookingStatus.DELIVERED, BookingStatus.DISPUTED, BookingStatus.FULFILLED].includes(booking.status)) {
+      throw new HttpError(409, "DELIVERY_NOT_AVAILABLE", "The provider has not submitted this delivery yet.");
+    }
+    const asset = await prisma.bookingDeliveryAsset.findFirst({
+      where: { id: req.params.assetId, bookingId: booking.id },
+    });
+    if (!asset) throw new HttpError(404, "AUDIO_NOT_FOUND", "Audio deliverable not found.");
+    const bytes = await readAudioDelivery(asset.storageRef);
+    const safeName = asset.fileName.replace(/["\\\\]/g, "_");
+    res.setHeader("Content-Type", asset.mimeType);
+    res.setHeader("Content-Length", String(bytes.length));
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.send(bytes);
+  }),
+);
+
 /** Provider marks a fully funded, standalone audio order as delivered. */
 paymentsRouter.post(
   "/bookings/:id/deliver",
@@ -989,6 +1095,8 @@ paymentsRouter.post(
     if (booking.eventId) {
       throw new HttpError(409, "EVENT_BOOKING_WORKFLOW", "Event-linked bookings are completed through the assigned verifier workflow.");
     }
+    const deliverableCount = await prisma.bookingDeliveryAsset.count({ where: { bookingId: booking.id } });
+    if (deliverableCount < 1) throw new HttpError(409, "AUDIO_DELIVERABLE_REQUIRED", "Upload at least one audio file before submitting the delivery note.");
     if (booking.paidMinor !== booking.totalMinor) {
       throw new HttpError(409, "BOOKING_NOT_FULLY_FUNDED", "The customer must complete the agreed payment before delivery can be submitted.");
     }
@@ -1057,10 +1165,13 @@ paymentsRouter.post(
   asyncHandler(async (req, res) => {
     const booking = await prisma.booking.findUnique({
       where: { id: req.params.id },
-      select: { id: true, buyerId: true, eventId: true },
+      select: { id: true, buyerId: true, eventId: true, status: true },
     });
     if (!booking) throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking not found");
     if (booking.buyerId !== req.user!.id) throw new HttpError(403, "FORBIDDEN", "Only the customer who placed this order can approve delivery");
+    if (booking.status !== BookingStatus.DELIVERED) throw new HttpError(409, "INVALID_DELIVERY_STATE", "Only a submitted delivery can be approved.");
+    const deliverableCount = await prisma.bookingDeliveryAsset.count({ where: { bookingId: booking.id } });
+    if (deliverableCount < 1) throw new HttpError(409, "AUDIO_DELIVERABLE_REQUIRED", "This booking has no downloadable audio deliverable.");
     if (booking.eventId) throw new HttpError(409, "EVENT_BOOKING_WORKFLOW", "Event-linked bookings are released by the assigned lead verifier.");
     const result = await releaseBookingEscrow(booking.id, req.user!.id);
     res.json(result);
@@ -1114,6 +1225,7 @@ paymentsRouter.get(
         items: { include: { listing: { select: { title: true } } } },
         vendor: { select: { businessName: true } },
         event: { select: { id: true, title: true } },
+        deliveryAssets: { select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true }, orderBy: { createdAt: "desc" } },
       },
     });
     res.json({
@@ -1123,6 +1235,7 @@ paymentsRouter.get(
         commissionMinor: b.commissionMinor.toString(),
         totalMinor: b.totalMinor.toString(),
         paidMinor: b.paidMinor.toString(),
+        deliveryAssets: b.deliveryAssets.map((asset) => ({ ...asset, sizeBytes: asset.sizeBytes.toString() })),
         items: b.items.map((i) => ({
           ...i,
           unitPriceMinor: i.unitPriceMinor.toString(),

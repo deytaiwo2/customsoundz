@@ -43,6 +43,44 @@ export async function api<T = unknown>(
   return body as T;
 }
 
+export async function uploadProtectedFile<T = unknown>(path: string, file: File): Promise<T> {
+  const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  const fallbackTypes: Record<string, string> = {
+    mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
+    aac: "audio/aac", ogg: "audio/ogg", flac: "audio/flac",
+  };
+  const contentType = file.type && file.type !== "application/octet-stream"
+    ? file.type
+    : fallbackTypes[extension] || "";
+  if (!contentType) throw new Error("Choose an MP3, WAV, M4A, AAC, OGG or FLAC audio file.");
+  const headers: Record<string, string> = { "Content-Type": contentType };
+  const accessToken = token();
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const response = await fetch(apiUrl(path), { method: "POST", headers, body: file });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body?.error?.message || body?.message || `Upload failed (${response.status})`);
+  return body as T;
+}
+
+export async function downloadProtectedFile(path: string, fileName: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  const accessToken = token();
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const response = await fetch(apiUrl(path), { headers });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.error?.message || body?.message || `Download failed (${response.status})`);
+  }
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 export type ApiListing = {
   id: string;
   title: string;

@@ -32,6 +32,7 @@ const schema = z.object({
   AWS_ENDPOINT_URL_S3: z.string().url().optional(),
   AWS_REGION: z.string().optional(),
   KYC_STORAGE_BUCKET: z.string().optional(),
+  AUDIO_STORAGE_BUCKET: z.string().optional(),
 });
 
 const rawEnv: NodeJS.ProcessEnv = {};
