@@ -9,6 +9,7 @@ export const APP_ROUTE_PATHS = {
 
 const LEGACY_ROLE_SEGMENTS: Record<string, string> = {
   client: "client",
+  artist: "artist",
   planner: "client",
   "executive-planner": "client",
   organization: "organization",
@@ -21,6 +22,7 @@ const LEGACY_ROLE_SEGMENTS: Record<string, string> = {
 
 const DASHBOARD_ROLE_SEGMENTS = new Set([
   "client",
+  "artist",
   "organization",
   "vendor",
   "affiliate",

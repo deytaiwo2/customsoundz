@@ -117,8 +117,8 @@ const roleMeta: Record<
 > = {
   CLIENT: {
     label: "Customer",
-    short: "Event planner",
-    description: "Plan, budget, invite guests and book verified services.",
+    short: "Customer",
+    description: "Discover artists, commission audio projects and manage bookings.",
   },
   ARTIST: {
     label: "Artist",
@@ -706,16 +706,56 @@ function VendorPerformancePanel() {
   return <section className="ess-panel"><SectionTitle eyebrow="Verified data" title="Vendor performance" /><div className="ess-metrics"><Metric label="Bookings" value={String(bookingCount)} detail="All booking statuses" /><Metric label="Enquiries" value={String(enquiryCount)} detail="Customer enquiries received" /><Metric label="Average rating" value={review} detail={`${data.reviews.count} customer reviews`} /><Metric label="Live listings" value={String(data.listings.ACTIVE || 0)} detail={`${data.listings.DRAFT || 0} drafts · ${data.listings.PAUSED || 0} paused`} /></div></section>;
 }
 
+function ArtistProfilePanel() {
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+  const [genres, setGenres] = useState("");
+  const [feedback, setFeedback] = useState("Loading your artist profile…");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    let active = true;
+    api<{ profile: { displayName: string; bio?: string | null; genres: string[] } }>("/artist/profile")
+      .then(({ profile }) => {
+        if (!active) return;
+        setDisplayName(profile.displayName);
+        setBio(profile.bio ?? "");
+        setGenres(profile.genres.join(", "));
+        setFeedback("");
+      })
+      .catch((error) => { if (active) setFeedback(error instanceof Error ? error.message : "Unable to load your artist profile."); });
+    return () => { active = false; };
+  }, []);
+  const save = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const result = await api<{ profile: { displayName: string; bio?: string | null; genres: string[] } }>("/artist/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ displayName, bio, genres: genres.split(",").map((value) => value.trim()).filter(Boolean) }),
+      });
+      setDisplayName(result.profile.displayName);
+      setBio(result.profile.bio ?? "");
+      setGenres(result.profile.genres.join(", "));
+      setFeedback("Artist profile saved.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Unable to save your artist profile.");
+    } finally { setSaving(false); }
+  };
+  return <section className="ess-panel"><SectionTitle eyebrow="Artist identity" title="Your artist profile" /><p className="ess-muted">Keep your public creative identity clear. Portfolio metadata is supported; private audio samples and MP3 delivery are not enabled yet.</p><form onSubmit={save} className="ess-form-grid"><label>Artist or studio name<input value={displayName} minLength={2} maxLength={120} required onChange={(event) => setDisplayName(event.target.value)} /></label><label>Genres and creative services<input value={genres} maxLength={1000} placeholder="Original songs, voice-over, jingles" onChange={(event) => setGenres(event.target.value)} /></label><label className="ess-form-full">Artist bio<textarea value={bio} maxLength={2000} rows={5} onChange={(event) => setBio(event.target.value)} /></label><div className="ess-form-full"><button className="ess-primary" type="submit" disabled={saving}>{saving ? "Saving…" : "Save artist profile"}</button>{feedback && <p className="ess-muted" role="status">{feedback}</p>}</div></form></section>;
+}
+
 function VendorPortal({
   listings,
   setListings,
   gigs,
   setGigs,
+  isArtist = false,
 }: {
   listings: Listing[];
   setListings: React.Dispatch<React.SetStateAction<Listing[]>>;
   gigs: Gig[];
   setGigs: React.Dispatch<React.SetStateAction<Gig[]>>;
+  isArtist?: boolean;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Listing | null>(null);
@@ -861,15 +901,15 @@ function VendorPortal({
     }
   };
   const [vendorTab, setVendorTab] = useDashboardTab(
-    ["catalog", "wallet", "payments", "plans", "kyc", "messages", "notifications", "promotions"] as const,
+    ["catalog", "wallet", "payments", "plans", "kyc", "messages", "notifications", "promotions", "artist"] as const,
     "catalog",
   );
   return (
     <>
       <div className="ess-page-heading">
         <div>
-          <p className="ess-eyebrow">Creative partner command center</p>
-          <h1>Make your sound bookable.</h1>
+          <p className="ess-eyebrow">{isArtist ? "Artist workspace" : "Creative partner command center"}</p>
+          <h1>{isArtist ? "Make your sound bookable." : "Grow your creative services."}</h1>
           <p>
             Manage your creative services, bookings, requests and earnings from one
             view.
@@ -886,7 +926,8 @@ function VendorPortal({
       </div>
       {notice && <div className="ess-toast">{notice}</div>}
       <div className="ess-filter-row" style={{ marginBottom: 12 }}>
-        <button type="button" className={vendorTab === "catalog" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("catalog")}>Catalog & demand</button>
+        {isArtist && <button type="button" className={vendorTab === "artist" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("artist")}>Artist profile</button>}
+        <button type="button" className={vendorTab === "catalog" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("catalog")}>Services & demand</button>
         <button type="button" className={vendorTab === "wallet" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("wallet")}>Wallet & escrow</button>
         <button type="button" className={vendorTab === "payments" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("payments")}>Booking payments</button>
         <button type="button" className={vendorTab === "plans" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("plans")}>Plans & promos</button>
@@ -895,7 +936,9 @@ function VendorPortal({
         <button type="button" className={vendorTab === "notifications" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("notifications")}>Notifications</button>
         <button type="button" className={vendorTab === "promotions" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("promotions")}>Promotions</button>
       </div>
-      {vendorTab === "promotions" ? (
+      {vendorTab === "artist" && isArtist ? (
+        <ArtistProfilePanel />
+      ) : vendorTab === "promotions" ? (
         <PromotionsPanel mode="vendor" />
       ) : vendorTab === "wallet" ? (
         <WalletPanel role="VENDOR" />
@@ -2003,7 +2046,7 @@ export default function EnterpriseApp() {
     } catch (error) {
       setAuthError(
         error instanceof TypeError
-          ? "We could not reach EPHINTA. Check your internet connection and try again."
+          ? "We could not reach Dublu Vé. Check your internet connection and try again."
           : "We could not complete your request. Please try again.",
       );
     }
@@ -2031,6 +2074,7 @@ export default function EnterpriseApp() {
         setListings={setListings}
         gigs={gigs}
         setGigs={setGigs}
+        isArtist={activeRole === "ARTIST"}
       />
     ) : session && activeRole === "AFFILIATE" ? (
       <AffiliatePortal />
@@ -2169,10 +2213,10 @@ export default function EnterpriseApp() {
           className="ess-brand"
           onClick={() => (session ? openDashboard(session.role) : navigate("/"))}
         >
-          <img className="ess-app-brand-logo" src="/brand/ephinta_logo2.png" alt="EPHINTA" /><span className="ess-brand-mark">EPHINTA</span>
+          <span className="ess-brand-mark">DV</span>
           <span>
-            EPHINTA
-            <small>International event infrastructure</small>
+            Dublu Vé
+            <small>Music &amp; audio creative marketplace</small>
           </span>
         </button>
         {session ? (
@@ -2276,7 +2320,7 @@ export default function EnterpriseApp() {
             {menuOpen && (
               <div className="ess-menu-dropdown ess-public-dropdown">
                 <div className="ess-menu-heading">
-                  <span>EPHINTA</span>
+                  <span>Dublu Vé</span>
                   <small>Choose how you want to work</small>
                 </div>
                 <button
@@ -2895,24 +2939,23 @@ function PublicHome({
       <section className="ess-hero">
         <div className="ess-hero-copy">
           <span className="ess-kicker">
-            <span className="ess-live-dot" /> The event planning workspace
+            <span className="ess-live-dot" /> The music and audio marketplace
           </span>
           <h1>
-            Make event planning feel <em>more manageable.</em>
+            Make your next sound <em>unforgettable.</em>
           </h1>
           <p>
-            Organize event details, explore available services, and keep track
-            of the tasks and bookings involved.
+            Discover artists, commission songs and jingles, and manage your audio projects from brief to delivery.
           </p>
           <div className="ess-hero-actions">
             <button className="ess-primary ess-large-button" onClick={onSignup}>
-              Build your event <span>→</span>
+              Create your audio brief <span>→</span>
             </button>
             <button
               className="ess-ghost-button"
-              onClick={() => onRole("VENDOR")}
+              onClick={() => onRole("ARTIST")}
             >
-              I provide event services
+              I create music and audio
             </button>
           </div>
         </div>
@@ -2920,9 +2963,9 @@ function PublicHome({
           <div className="ess-orbit orbit-a" />
           <div className="ess-orbit orbit-b" />
           <div className="ess-hero-card">
-            <p className="ess-eyebrow">Planning snapshot</p>
-            <strong>Event brief</strong>
-            <span>Keep the next steps together</span>
+            <p className="ess-eyebrow">Project snapshot</p>
+            <strong>Audio brief</strong>
+            <span>Keep your creative project on track</span>
             <div className="ess-mini-bars">
               <i />
               <i />
@@ -3076,7 +3119,7 @@ function AuthModal({
         </button>
         <div className="ess-auth-brand">
           <img src="/brand/ephinta_logo2.png" alt="" />
-          <span>EPHINTA</span>
+          <span>Dublu Vé</span>
         </div>
         <p className="ess-eyebrow">{mode === "signup" ? `${roleMeta[role].short} registration` : "Secure access"}</p>
         <h2 id="ess-auth-title">
@@ -3473,7 +3516,7 @@ function AuthModal({
         )}
         <p className="ess-auth-mode-switch">
           {mode === "signin" ? (
-            <>New to EPHINTA? <button type="button" onClick={() => setMode("signup")}>Create an account</button></>
+            <>New to Dublu Vé? <button type="button" onClick={() => setMode("signup")}>Create an account</button></>
           ) : mode === "signup" ? (
             <>Already have an account? <button type="button" onClick={() => setMode("signin")}>Sign in</button></>
           ) : (

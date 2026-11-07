@@ -5,6 +5,8 @@ const prisma = new PrismaClient();
 const categories = [
   "Venues", "Catering", "Decor", "Photography & Video", "Entertainment",
   "Attire", "Logistics", "Security", "Rentals & Equipment", "Printing & Invites",
+  "Original Songs & Custom Music", "Brand Jingles", "Voice-over & Narration",
+  "Mixing & Mastering", "Podcast Production", "Audio Editing", "Live Performance", "Sound Design",
 ];
 
 const plans: Prisma.PlanCreateInput[] = [

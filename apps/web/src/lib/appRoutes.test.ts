@@ -11,6 +11,7 @@ describe("application routes", () => {
       ["/auth/signin", "/auth/:mode"],
       ["/reset-password", "/reset-password"],
       ["/dashboard/vendor", "/dashboard/:role"],
+      ["/dashboard/artist", "/dashboard/:role"],
       ["/app/planner", "/app/*"],
     ] as const;
 
@@ -24,6 +25,7 @@ describe("application routes", () => {
     ["executive-planner", "/dashboard/client"],
     ["organization", "/dashboard/organization"],
     ["vendor", "/dashboard/vendor"],
+    ["artist", "/dashboard/artist"],
     ["affiliate", "/dashboard/affiliate"],
     ["verifier", "/dashboard/verifier"],
     ["consultant", "/dashboard/consultant"],
@@ -36,6 +38,8 @@ describe("application routes", () => {
 
   it.each([
     [null, "vendor", "/auth/signin?role=VENDOR"],
+    [null, "artist", "/auth/signin?role=ARTIST"],
+    ["ARTIST", "artist", null],
     [null, "rider", "/auth/signin?role=CLIENT"],
     ["VENDOR", "vendor", null],
     ["VENDOR", "client", "/dashboard/vendor"],

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { EPHINTA_MUSIC } from "../lib/music/ephinta-config";
 
 type Props = {
-  /** Optional override; by default the bundled, licensed EPHINTA tracks are used. */
+  /** Optional override; by default the bundled, licensed background tracks are used. */
   audioUrl?: string;
   /** Show a one-time consent dialog when the user has not chosen yet. */
   showPrompt?: boolean;
@@ -27,11 +27,11 @@ export default function AudioExperience({ audioUrl, showPrompt = true, autoPlay 
 
   useEffect(() => {
     try {
-      const savedVolume = Number(localStorage.getItem("ephinta:sound-volume"));
+      const savedVolume = Number(localStorage.getItem("dubluve:sound-volume") ?? localStorage.getItem("ephinta:sound-volume"));
       if (Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 0.7) setVolume(savedVolume);
-      const savedTrack = Number(localStorage.getItem("ephinta:music-track"));
+      const savedTrack = Number(localStorage.getItem("dubluve:music-track") ?? localStorage.getItem("ephinta:music-track"));
       if (Number.isInteger(savedTrack) && savedTrack >= 0 && savedTrack < TRACKS.length) setTrackIndex(savedTrack);
-      const savedSound = localStorage.getItem("ephinta:sound");
+      const savedSound = localStorage.getItem("dubluve:sound") ?? localStorage.getItem("ephinta:sound");
       if (savedSound === "off") setConsent(false);
       if (savedSound === "on") setConsent(true);
     } catch { /* Storage may be unavailable in private browsing. */ }
@@ -52,8 +52,8 @@ export default function AudioExperience({ audioUrl, showPrompt = true, autoPlay 
 
   useEffect(() => {
     try {
-      localStorage.setItem("ephinta:sound-volume", String(volume));
-      localStorage.setItem("ephinta:music-track", String(trackIndex));
+      localStorage.setItem("dubluve:sound-volume", String(volume));
+      localStorage.setItem("dubluve:music-track", String(trackIndex));
     } catch { /* Optional preference only. */ }
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume, trackIndex]);
@@ -68,7 +68,7 @@ export default function AudioExperience({ audioUrl, showPrompt = true, autoPlay 
       await audio.play();
       setStatus("Background music is playing.");
     } catch (error) {
-      console.error("EPHINTA background music could not start.", error);
+      console.error("Dublu Vé background music could not start.", error);
       setStatus("Background music could not start. Check your browser's audio settings and connection.");
     }
   }
@@ -76,7 +76,7 @@ export default function AudioExperience({ audioUrl, showPrompt = true, autoPlay 
   function chooseConsent(accepted: boolean) {
     setConsent(accepted);
     setStatus(accepted ? "Background music is starting." : "Background music is off.");
-    try { localStorage.setItem("ephinta:sound", accepted ? "on" : "off"); } catch { /* Consent remains in memory for this visit. */ }
+    try { localStorage.setItem("dubluve:sound", accepted ? "on" : "off"); } catch { /* Consent remains in memory for this visit. */ }
     if (!accepted) {
       audioRef.current?.pause();
       return;
@@ -99,7 +99,7 @@ export default function AudioExperience({ audioUrl, showPrompt = true, autoPlay 
         }}
         onError={() => {
           const error = audioRef.current?.error;
-          console.error("An EPHINTA background music track could not be loaded.", error);
+          console.error("An Dublu Vé background music track could not be loaded.", error);
           setStatus("A music track could not be loaded.");
         }}
       />
@@ -110,7 +110,7 @@ export default function AudioExperience({ audioUrl, showPrompt = true, autoPlay 
             <span className="eph-audio__prompt-icon" aria-hidden="true">♫</span>
             <p className="eph-audio__eyebrow">A little atmosphere</p>
             <h2 id="eph-audio-title">Enjoy background music?</h2>
-            <p>May EPHINTA play its original event music while you browse? Your choice is saved on this device.</p>
+            <p>May Dublu Vé play its licensed background music while you browse? Your choice is saved on this device.</p>
             <div className="eph-audio__choices">
               <button type="button" className="eph-audio__accept" onClick={() => chooseConsent(true)}>Yes, play music</button>
               <button type="button" className="eph-audio__decline" onClick={() => chooseConsent(false)}>No, thanks</button>

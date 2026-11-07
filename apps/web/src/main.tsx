@@ -35,7 +35,7 @@ if (!isNative) {
   registerSW({
     immediate: true,
     onRegisterError(error) {
-      console.error('Unable to register EPHINTA service worker.', error);
+      console.error('Unable to register Dublu Vé service worker.', error);
     },
   });
 }
@@ -63,7 +63,7 @@ class StartupErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo): void {
-    console.error('EPHINTA could not render its application screen.', error, info.componentStack);
+    console.error('Dublu Vé could not render its application screen.', error, info.componentStack);
   }
 
   render(): React.ReactNode {
@@ -83,7 +83,7 @@ class StartupErrorBoundary extends React.Component<
             fontFamily: 'system-ui, sans-serif',
           }}
         >
-          <h1 style={{ margin: 0 }}>EPHINTA needs to reload</h1>
+          <h1 style={{ margin: 0 }}>Dublu Vé needs to reload</h1>
           <p style={{ maxWidth: 420, margin: 0, lineHeight: 1.6 }}>
             Something interrupted this screen. Your saved account and planning data have not been cleared.
           </p>
@@ -100,7 +100,7 @@ class StartupErrorBoundary extends React.Component<
               fontWeight: 700,
             }}
           >
-            Reload EPHINTA
+            Reload Dublu Vé
           </button>
         </main>
       );
@@ -126,7 +126,7 @@ function StartupLoadingScreen(): React.ReactElement {
         fontFamily: 'system-ui, sans-serif',
       }}
     >
-      <strong style={{ fontSize: 24, letterSpacing: 1 }}>EPHINTA</strong>
+      <strong style={{ fontSize: 24, letterSpacing: 1 }}>Dublu Vé</strong>
       <span>Preparing your workspace…</span>
     </main>
   );

@@ -133,6 +133,18 @@ type PublicPromotion = {
   budgetMinor: string;
 };
 
+type PublicArtist = {
+  id: string;
+  displayName: string;
+  bio?: string | null;
+  genres: string[];
+  averageRating: number;
+  completedJobs: number;
+  city?: string | null;
+  country?: string | null;
+  verification: string;
+};
+
 function formatPromotionLocation(city?: string | null, country?: string | null) {
   return [city, country].filter(Boolean).join(', ');
 }
@@ -232,6 +244,8 @@ export default function PublicLanding({
   const [notice, setNotice] = useState('');
 
   const [promotions, setPromotions] = useState<PublicPromotion[]>([]);
+  const [artists, setArtists] = useState<PublicArtist[]>([]);
+  const [artistsLoading, setArtistsLoading] = useState(true);
 
   const [activePromotionIndex, setActivePromotionIndex] = useState(0);
 
@@ -242,6 +256,19 @@ export default function PublicLanding({
 
 
 
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(apiUrl('/artists'))
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load artist profiles.");
+        const payload = await response.json();
+        if (!cancelled) setArtists(Array.isArray(payload.items) ? payload.items : []);
+      })
+      .catch(() => { if (!cancelled) setArtists([]); })
+      .finally(() => { if (!cancelled) setArtistsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -433,7 +460,7 @@ export default function PublicLanding({
 
         const body: Record<string, unknown> = { name: name.trim(), email: email.trim().toLowerCase(), password, role };
 
-        if (role === 'VENDOR') body.businessName = businessName.trim();
+        if (role === 'VENDOR' || role === 'ARTIST') body.businessName = businessName.trim();
         if (role === 'ORGANIZATION') {
 
           body.organizationMode = 'EVENT_PLANNING';
@@ -473,7 +500,7 @@ export default function PublicLanding({
 
     } catch (e) {
       setError(e instanceof TypeError
-        ? 'We could not reach EPHINTA. Check your internet connection and try again.'
+        ? 'We could not reach Dublu Vé. Check your internet connection and try again.'
         : e instanceof Error
           ? e.message
           : 'We could not complete your request. Please try again.');
@@ -795,11 +822,11 @@ export default function PublicLanding({
 
       <header className="eph-nav">
 
-        <a className="eph-brand" href="#home" aria-label="Ephinta home">
+        <a className="eph-brand" href="#home" aria-label="Dublu Vé home">
 
-          <img src="/brand/ephinta_logo4.png?v=20261010-092247" alt="EPHINTA" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+          <span className="eph-brand-mark" style={{ display: "grid", placeItems: "center", width: 38, height: 38, borderRadius: 12, background: "#8b60c2", color: "#fff", fontWeight: 800 }}>DV</span>
 
-          <span>EPHINTA</span>
+          <span>Dublu Vé</span>
 
         </a>
 
@@ -811,7 +838,7 @@ export default function PublicLanding({
 
           <nav ref={menuRef} id="eph-information-menu" className={`eph-links ${menuOpen ? 'open' : ''}`} aria-label="Main navigation">
 
-          <div className="eph-menu-brand"><img src="/brand/ephinta_logo4.png?v=20261010-092247" alt="" />EPHINTA</div>
+          <div className="eph-menu-brand"><strong>DV</strong>Dublu Vé</div>
 
           <div className="ephinta-theme-menu-control">
 
@@ -832,6 +859,7 @@ export default function PublicLanding({
 
           <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
 
+          <a href="#artists" onClick={() => setMenuOpen(false)}>Artists</a>
           <a href="#vendors" onClick={() => setMenuOpen(false)}>Vendors</a>
 
           <a href="#safety" onClick={() => setMenuOpen(false)}>Safety</a>
@@ -844,12 +872,13 @@ export default function PublicLanding({
 
              <span className="eph-menu-label">PORTALS & ACCOUNTS</span>
 
-             <button type="button" className="eph-menu-primary" onClick={() => { setMenuOpen(false); startPlanning(); }}><img src="/brand/ephinta_logo4.png?v=20261010-092247" alt="" />Plan your next event here <span aria-hidden="true">→</span></button>
+             <button type="button" className="eph-menu-primary" onClick={() => { setMenuOpen(false); startPlanning(); }}>Create your audio brief <span aria-hidden="true">→</span></button>
 
             <button type="button" onClick={() => { setMenuOpen(false); openAuth('signin'); }}>Sign in to your account</button>
 
             <button type="button" onClick={() => { setMenuOpen(false); openAuth('signup', 'CLIENT'); }}>Create customer account</button>
 
+            <button type="button" onClick={() => { setMenuOpen(false); openAuth('signup', 'ARTIST'); }}>Create artist account</button>
             <button type="button" onClick={() => { setMenuOpen(false); openAuth('signup', 'VENDOR'); }}>Create vendor account</button>
 
             <button type="button" onClick={() => { setMenuOpen(false); openAuth('signup', 'ORGANIZATION'); }}>Create organizer account</button>
@@ -913,15 +942,15 @@ export default function PublicLanding({
 
             <div>
 
-              <div className="eph-eyebrow"><i /> Your event. Your vision. One platform.</div>
+              <div className="eph-eyebrow"><i /> Your sound. Your story. One creative platform.</div>
 
-              <h1 className="eph-title ephinta-bright-headline">Plan the event<br /><span className="ephinta-marker-phrase">you <span className="ephinta-marker-word"><em>imagine.</em></span></span></h1>
+              <h1 className="eph-title ephinta-bright-headline">Create the sound<br /><span className="ephinta-marker-phrase">you <span className="ephinta-marker-word"><em>imagine.</em></span></span></h1>
 
-              <p className="eph-subtitle">From the first idea to the final guest, bring every detail together. Discover event professionals, organize your plans and build an occasion that feels unmistakably yours.</p>
+              <p className="eph-subtitle">From original songs and brand jingles to voice-overs, mixing and mastering, find creative talent and turn your brief into a finished sound.</p>
 
               <div className="eph-hero-cta">
 
-                <button className="eph-btn eph-btn-purple" onClick={startPlanning}>Start planning <span aria-hidden="true">→</span></button>
+                <button className="eph-btn eph-btn-purple" onClick={startPlanning}>Start a project <span aria-hidden="true">→</span></button>
 
                 <button className="eph-btn eph-btn-outline" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>Explore how it works</button>
 
@@ -943,11 +972,11 @@ export default function PublicLanding({
 
   <p className="ephinta-marketing-zone__eyebrow ephinta-force-visible-eyebrow ephinta-copy-eyebrow-force">ONE PLATFORM. EVERY DETAIL.</p>
 
-  <h2>{marketingFocus === 'discover' ? 'Meet the people who make moments memorable.' : marketingFocus === 'plan' ? 'Your vision deserves a brilliant plan.' : 'More joy. Less event-day stress.'}</h2>
+  <h2>{marketingFocus === 'discover' ? 'Meet the artists behind memorable sound.' : marketingFocus === 'plan' ? 'Your idea deserves a brilliant sound.' : 'More creativity. Less production stress.'}</h2>
 
-  <p className="ephinta-right-copy-visible ephinta-force-visible-description ephinta-copy-description-force">{marketingFocus === 'discover' ? 'Explore trusted event professionals and find the right people to bring your ideas to life.' : marketingFocus === 'plan' ? 'Keep ideas, suppliers, budgets and details together in one clear planning journey.' : 'Spend less time chasing details and more time enjoying the moments that matter.'}</p>
+  <p className="ephinta-right-copy-visible ephinta-force-visible-description ephinta-copy-description-force">{marketingFocus === 'discover' ? 'Discover music artists, voice talents and audio producers who can bring your ideas to life.' : marketingFocus === 'plan' ? 'Share your brief, agree the scope and keep your audio project details together.' : 'Spend less time coordinating production and more time enjoying the finished sound.'}</p>
 
-  <div className="ephinta-human-faces" aria-label="Friendly EPHINTA community">
+  <div className="ephinta-human-faces" aria-label="Dublu Vé creative community">
 
     <img src="/brand/people/happy-face-1.svg" alt="Smiling customer" loading="lazy" />
 
@@ -957,19 +986,19 @@ export default function PublicLanding({
 
   </div>
 
-  <p className="ephinta-human-proof ephinta-right-copy-visible ephinta-force-visible-tagline ephinta-copy-tagline-force">Made for real people, meaningful occasions and unforgettable moments.</p>
+  <p className="ephinta-human-proof ephinta-right-copy-visible ephinta-force-visible-tagline ephinta-copy-tagline-force">Made for artists, brands, creators and the moments their sound brings to life.</p>
 
-  <div className="ephinta-marketing-zone__switches" aria-label="Explore EPHINTA">
+  <div className="ephinta-marketing-zone__switches" aria-label="Explore Dublu Vé">
 
-    <button type="button" aria-pressed={marketingFocus === 'discover'} onClick={() => setMarketingFocus('discover')}>Find professionals</button>
+    <button type="button" aria-pressed={marketingFocus === 'discover'} onClick={() => setMarketingFocus('discover')}>Discover artists</button>
 
-    <button type="button" aria-pressed={marketingFocus === 'plan'} onClick={() => setMarketingFocus('plan')}>Plan with confidence</button>
+    <button type="button" aria-pressed={marketingFocus === 'plan'} onClick={() => setMarketingFocus('plan')}>Shape your sound</button>
 
-    <button type="button" aria-pressed={marketingFocus === 'celebrate'} onClick={() => setMarketingFocus('celebrate')}>Enjoy the moment</button>
+    <button type="button" aria-pressed={marketingFocus === 'celebrate'} onClick={() => setMarketingFocus('celebrate')}>Hear the difference</button>
 
   </div>
 
-  <a className="ephinta-marketing-zone__cta" href="/plan">Plan your event <span aria-hidden="true">→</span></a>
+  <a className="ephinta-marketing-zone__cta" href="/plan">Browse creative services <span aria-hidden="true">→</span></a>
 
 </section>
 
@@ -979,15 +1008,41 @@ export default function PublicLanding({
 
 
 
+        <section className="eph-section" id="artists">
+          <div className="eph-section-head">
+            <span className="eph-section-kicker">Creative talent</span>
+            <h2>Find your next creative collaborator.</h2>
+            <p>Discover artist and studio profiles as they join Dublu Vé. Ratings and completed work are shown only when recorded.</p>
+          </div>
+          {artistsLoading ? (
+            <p className="eph-muted" role="status">Loading artist profiles…</p>
+          ) : artists.length ? (
+            <div className="eph-cards">
+              {artists.map((artist) => (
+                <article className="eph-card" key={artist.id}>
+                  <div className="eph-card-icon" aria-hidden="true">♫</div>
+                  <h3>{artist.displayName}</h3>
+                  <p>{artist.bio || "Creative profile on Dublu Vé."}</p>
+                  <p>{artist.genres.join(" · ") || "Audio and creative services"}</p>
+                  <p>{[artist.city, artist.country].filter(Boolean).join(", ") || "Location not supplied"}</p>
+                  <small>{artist.verification === "VERIFIED" ? "Verified provider" : "Verification not confirmed"}{artist.averageRating > 0 ? ` · ${artist.averageRating.toFixed(1)} / 5` : ""}{artist.completedJobs > 0 ? ` · ${artist.completedJobs} completed jobs` : ""}</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="eph-muted">Artist profiles will appear here as creative professionals join the marketplace.</p>
+          )}
+        </section>
+
         <section className="eph-strip" aria-label="Platform highlights">
 
-          <div className="eph-stat"><strong>One place</strong><span>Bring your plans together</span></div>
+          <div className="eph-stat"><strong>One place</strong><span>Bring your audio ideas together</span></div>
 
-          <div className="eph-stat"><strong>Your choice</strong><span>Explore services your way</span></div>
+          <div className="eph-stat"><strong>Your choice</strong><span>Find the right creative talent</span></div>
 
-          <div className="eph-stat"><strong>Clear steps</strong><span>Keep details organized</span></div>
+          <div className="eph-stat"><strong>Clear steps</strong><span>Keep every project on track</span></div>
 
-          <div className="eph-stat"><strong>More moments</strong><span>Spend time on what matters</span></div>
+          <div className="eph-stat"><strong>More moments</strong><span>Focus on the sound that matters</span></div>
 
         </section>
 
@@ -995,15 +1050,15 @@ export default function PublicLanding({
 
         <section className="eph-section" id="how-it-works">
 
-          <div className="eph-section-head"><span className="eph-section-kicker">Simple by design</span><h2><span className="ephinta-bright-slogan">Big moments. Better organized.</span></h2><p>Turn a big idea into a clear plan, connect with the services you need and keep your event details within reach.</p></div>
+          <div className="eph-section-head"><span className="eph-section-kicker">Simple by design</span><h2><span className="ephinta-bright-slogan">Big ideas. Better sound.</span></h2><p>Turn a creative brief into a clear production plan, connect with the right talent and keep delivery details within reach.</p></div>
 
           <div className="eph-cards">
 
-            <article className="eph-card"><div className="eph-card-icon" aria-hidden="true">✓</div><h3>01. Shape your vision</h3><p>Choose your event type, guest range, date and style. Your starting brief helps you organize the next steps.</p></article>
+            <article className="eph-card"><div className="eph-card-icon" aria-hidden="true">✓</div><h3>01. Share your brief</h3><p>Tell us what you need: a song, jingle, voice-over, podcast or production service. Set your style, deadline and project requirements.</p></article>
 
-            <article className="eph-card"><div className="eph-card-icon" aria-hidden="true">✦</div><h3>02. Explore services</h3><p>Identify the vendors and event services that fit your plan. Review details before making a booking decision.</p></article>
+            <article className="eph-card"><div className="eph-card-icon" aria-hidden="true">✦</div><h3>02. Discover creative talent</h3><p>Explore artist and studio profiles, compare service details and review portfolios before you book.</p></article>
 
-            <article className="eph-card"><div className="eph-card-icon" aria-hidden="true">✓</div><h3>03. Keep it moving</h3><p>Keep your planning details together and return to your saved draft as your event takes shape.</p></article>
+            <article className="eph-card"><div className="eph-card-icon" aria-hidden="true">✓</div><h3>03. Approve and receive your sound</h3><p>Track your booking, keep feedback in one place and receive the final audio when the work is approved.</p></article>
 
           </div>
 
@@ -1015,13 +1070,13 @@ export default function PublicLanding({
 
         <section className="eph-section" id="vendors" style={{ paddingTop: 0 }}>
 
-          <div><h2>Make your talent part of the moment.</h2><p>Are you an event professional or an organization? Create the appropriate account to get started with EPHINTA.</p></div>
+          <div><h2>Make your creative talent heard.</h2><p>Are you an artist, studio or audio-service provider? Create a profile, publish your services and connect with customers on Dublu Vé.</p></div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
 
-            <button className="eph-btn eph-btn-gold" onClick={() => openAuth('signup', 'VENDOR')}>Join as a vendor →</button>
+            <button className="eph-btn eph-btn-gold" onClick={() => openAuth('signup', 'VENDOR')}>Join as an artist →</button>
 
-            <button className="eph-btn" style={{ background: '#ffffff18', color: '#fff', border: '1px solid #ffffff3d' }} onClick={() => openAuth('signup', 'ORGANIZATION')}>Organization account</button>
+            <button className="eph-btn" style={{ background: '#ffffff18', color: '#fff', border: '1px solid #ffffff3d' }} onClick={() => openAuth('signup', 'ORGANIZATION')}>Join as a vendor</button>
 
           </div>
 
@@ -1071,7 +1126,7 @@ export default function PublicLanding({
 
       <footer className="eph-footer">
 
-        <a className="eph-brand" href="#home"><img src="/brand/ephinta_logo4.png?v=20261010-092247" alt="" /><span>EPHINTA</span></a>
+        <a className="eph-brand" href="#home"><span>Dublu Vé</span></a>
 
         <small>Plan thoughtfully. Celebrate fully.</small>
 
@@ -1085,8 +1140,8 @@ export default function PublicLanding({
 
         <section id="eph-auth-dialog" className="eph-modal" role="dialog" aria-modal="true" aria-labelledby="eph-auth-title">
 
-          <div className="eph-modal-brand"><img src="/brand/ephinta_logo2.png" alt="" /><span>EPHINTA</span></div>
-          <div className="eph-modal-top"><div><h2 id="eph-auth-title">{authMode === 'signin' ? 'Welcome back' : authMode === 'forgot' ? 'Reset your password' : ['Create your EPHINTA account', 'Choose your account type', 'Confirm your details'][registrationStep]}</h2><p>{authMode === 'signin' ? 'Sign in to continue planning.' : authMode === 'forgot' ? 'Enter your email and we\'ll send reset instructions if an account exists.' : ['Start with your contact details.', 'Choose how you will use EPHINTA.', 'Check your information before creating your account.'][registrationStep]}</p></div><button className="eph-close" onClick={() => setAuthMode(null)} aria-label="Close dialog">&times;</button></div>
+          <div className="eph-modal-brand"><span>Dublu Vé</span></div>
+          <div className="eph-modal-top"><div><h2 id="eph-auth-title">{authMode === 'signin' ? 'Welcome back' : authMode === 'forgot' ? 'Reset your password' : ['Create your Dublu Vé account', 'Choose your account type', 'Confirm your details'][registrationStep]}</h2><p>{authMode === 'signin' ? 'Sign in to continue creating.' : authMode === 'forgot' ? 'Enter your email and we\'ll send reset instructions if an account exists.' : ['Start with your contact details.', 'Choose how you will use Dublu Vé.', 'Check your information before creating your account.'][registrationStep]}</p></div><button className="eph-close" onClick={() => setAuthMode(null)} aria-label="Close dialog">&times;</button></div>
 
           {error && <div className="eph-auth-error" role="alert" aria-live="assertive">{error}</div>}
 
@@ -1139,7 +1194,7 @@ export default function PublicLanding({
                   ))}
                   </select>
                 </div>
-                {(role === 'VENDOR' || role === 'ORGANIZATION') ? (
+                {(role === 'ARTIST' || role === 'VENDOR' || role === 'ORGANIZATION') ? (
                   <div className="eph-field">
                     <label htmlFor="eph-business">Business / organization name</label>
                     <input id="eph-business" className="eph-control" required minLength={2} value={businessName} onChange={e => setBusinessName(e.target.value)} />
@@ -1148,8 +1203,10 @@ export default function PublicLanding({
                   <div className="eph-registration-note">
                     <strong>{roleLabel(role)} account</strong>
                     <span>{role === 'CLIENT'
-                      ? 'No business details are required. Your account will open the event-planning workspace.'
-                      : role === 'AFFILIATE'
+                      ? 'Your account will open the customer workspace for discovering and booking creative services.'
+                      : role === 'ARTIST'
+                        ? 'Your account will open an artist workspace for your profile, audio services, bookings and earnings.'
+                        : role === 'AFFILIATE'
                         ? 'Your account will open referral tools for sharing services and following referral activity.'
                         : role === 'VERIFIER'
                           ? 'Your account will open readiness tools for assigned service checks and event milestones.'
@@ -1161,15 +1218,15 @@ export default function PublicLanding({
 
             {authMode === 'signup' && registrationStep === 2 && (
               <div className="eph-registration-review">
-                <p className="eph-registration-review-kicker">Ready to join EPHINTA?</p>
+                <p className="eph-registration-review-kicker">Ready to join Dublu Vé?</p>
                 <h3>Review your account</h3>
                 <dl>
                   <div><dt>Name</dt><dd>{name || '—'}</dd></div>
                   <div><dt>Email</dt><dd>{email || '—'}</dd></div>
                   <div><dt>Account type</dt><dd>{roleLabel(role)}</dd></div>
-                  {(role === 'VENDOR' || role === 'ORGANIZATION') && <div><dt>Business</dt><dd>{businessName || '—'}</dd></div>}
+                  {(role === 'ARTIST' || role === 'VENDOR' || role === 'ORGANIZATION') && <div><dt>Artist / business</dt><dd>{businessName || '—'}</dd></div>}
                 </dl>
-                <p className="eph-registration-review-note">Your details will be used to create your EPHINTA account. You can complete additional profile and verification details after signing in.</p>
+                <p className="eph-registration-review-note">Your details will be used to create your Dublu Vé account. You can complete additional profile and verification details after signing in.</p>
               </div>
             )}
 
@@ -1190,7 +1247,7 @@ export default function PublicLanding({
             )}
           </form>
 
-          <div className="eph-auth-switch">{authMode === 'signin' ? <>Forgot password? <button onClick={() => { setAuthMode('forgot'); setRegistrationStep(0); setPassword(''); setError(''); setNotice(''); }}>Reset it</button><br />New to EPHINTA? <button onClick={() => { setAuthMode('signup'); setRegistrationStep(0); setPassword(''); setError(''); setNotice(''); }}>Create an account</button></> : <>Already have an account? <button onClick={() => { setAuthMode('signin'); setRegistrationStep(0); setPassword(''); setError(''); setNotice(''); }}>Sign in</button></>}</div>
+          <div className="eph-auth-switch">{authMode === 'signin' ? <>Forgot password? <button onClick={() => { setAuthMode('forgot'); setRegistrationStep(0); setPassword(''); setError(''); setNotice(''); }}>Reset it</button><br />New to Dublu Vé? <button onClick={() => { setAuthMode('signup'); setRegistrationStep(0); setPassword(''); setError(''); setNotice(''); }}>Create an account</button></> : <>Already have an account? <button onClick={() => { setAuthMode('signin'); setRegistrationStep(0); setPassword(''); setError(''); setNotice(''); }}>Sign in</button></>}</div>
 
         </section>
 

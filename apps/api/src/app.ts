@@ -89,6 +89,85 @@ export function createApp() {
   app.use("/api/v1/notifications", notificationsRouter);
   app.use("/api/v1/readiness", readinessRouter);
   app.use("/api/v1/admin", adminRouter);
+
+  // Public artist discovery exposes profile metadata only; sample files remain private.
+  app.get("/api/v1/artists", async (_req, res, next) => {
+    try {
+      const profiles = await prisma.artistProfile.findMany({
+        where: { user: { status: "ACTIVE" } },
+        orderBy: [{ averageRating: "desc" }, { completedJobs: "desc" }, { createdAt: "desc" }],
+        take: 50,
+        include: {
+          user: {
+            select: {
+              id: true,
+              vendorProfile: { select: { city: true, country: true, verification: true } },
+            },
+          },
+        },
+      });
+      res.json({
+        items: profiles.map((profile) => ({
+          id: profile.id,
+          userId: profile.user.id,
+          displayName: profile.displayName,
+          bio: profile.bio,
+          genres: profile.genres,
+          averageRating: profile.averageRating,
+          completedJobs: profile.completedJobs,
+          city: profile.user.vendorProfile?.city ?? null,
+          country: profile.user.vendorProfile?.country ?? null,
+          verification: profile.user.vendorProfile?.verification ?? "UNVERIFIED",
+        })),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/v1/artist/profile", requireAuth, requireRole("VENDOR"), async (req, res, next) => {
+    try {
+      if (req.user!.role !== "ARTIST") {
+        return res.status(403).json({ error: { code: "ARTIST_ROLE_REQUIRED", message: "An artist account is required." } });
+      }
+      const profile = await prisma.artistProfile.findUnique({ where: { userId: req.user!.id } });
+      if (!profile) return res.status(404).json({ error: { code: "ARTIST_PROFILE_NOT_FOUND", message: "Artist profile not found." } });
+      res.json({ profile });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/v1/artist/profile", requireAuth, requireRole("VENDOR"), async (req, res, next) => {
+    try {
+      if (req.user!.role !== "ARTIST") {
+        return res.status(403).json({ error: { code: "ARTIST_ROLE_REQUIRED", message: "An artist account is required." } });
+      }
+      const displayName = typeof req.body.displayName === "string" ? req.body.displayName.trim() : undefined;
+      const bio = typeof req.body.bio === "string" ? req.body.bio.trim() : undefined;
+      const genres = req.body.genres;
+      if (displayName !== undefined && (displayName.length < 2 || displayName.length > 120)) {
+        return res.status(400).json({ error: { code: "INVALID_ARTIST_NAME", message: "Artist name must be between 2 and 120 characters." } });
+      }
+      if (bio !== undefined && bio.length > 2000) {
+        return res.status(400).json({ error: { code: "ARTIST_BIO_TOO_LONG", message: "Artist bio must be 2,000 characters or fewer." } });
+      }
+      if (genres !== undefined && (!Array.isArray(genres) || genres.length > 20 || genres.some((genre: unknown) => typeof genre !== "string" || genre.trim().length < 2 || genre.trim().length > 80))) {
+        return res.status(400).json({ error: { code: "INVALID_ARTIST_GENRES", message: "Provide up to 20 genre or service labels, each 2–80 characters." } });
+      }
+      const profile = await prisma.artistProfile.update({
+        where: { userId: req.user!.id },
+        data: {
+          displayName,
+          bio,
+          genres: genres === undefined ? undefined : genres.map((genre: string) => genre.trim()),
+        },
+      });
+      res.json({ profile });
+    } catch (error) {
+      next(error);
+    }
+  });
   app.get("/api/v1/vendor/profile", requireAuth, requireRole("VENDOR"), async (req, res, next) => {
     try {
       const profile = await prisma.vendorProfile.findUnique({ where: { userId: req.user!.id }, include: { shops: true } });
