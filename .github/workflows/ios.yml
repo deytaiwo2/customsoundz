@@ -48,15 +48,17 @@ jobs:
         run: npm run build -w apps/web
 
       - name: Add iOS platform if missing
+        working-directory: apps/mobile
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! -d apps/mobile/ios ]]; then
-            npx cap --config apps/mobile/capacitor.config.ts add ios
+          if [[ ! -d ios ]]; then
+            npx cap add ios
           fi
 
       - name: Sync Capacitor iOS
-        run: npx cap --config apps/mobile/capacitor.config.ts sync ios
+        working-directory: apps/mobile
+        run: npx cap sync ios
 
       - name: List Xcode schemes
         shell: bash
