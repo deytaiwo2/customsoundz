@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { apiUrl, downloadProtectedFile } from "../lib/api";
 
 type Payload = { accessToken: string; user: { role: string } };
-type Project = { id: string; reference: string; title: string; genre: string; mood: string; services: Array<{ key: string; label: string; unitPriceMinor: string }>; estimatedTotalMinor: string; currency: string; status: string; createdAt: string; readyAt?: string | null; deliveryFileName?: string | null; customer?: { name: string; email: string } };
+type Project = { id: string; reference: string; title: string; genre: string; mood: string; services: Array<{ key: string; label: string; unitPriceMinor: string }>; estimatedTotalMinor: string; currency: string; status: string; createdAt: string; readyAt?: string | null; deliveryFileName?: string | null; brief?: string | null; customer?: { name: string; email: string } };
 
 const money = (minor: string, currency: string) => new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(minor) / 100);
 
@@ -84,6 +84,7 @@ export default function ProductionProjectsPanel({ payload }: { payload: Payload 
       <div className="listing-grid">{items.map(project=><article className="listing-card" key={project.id}>
         <p className="eyebrow">{project.reference} · {project.status.replace("_"," ")}</p><h3>{project.title}</h3>
         <p>{project.genre} · {project.mood} · {project.customer ? `Customer: ${project.customer.name} (${project.customer.email})` : "Your submitted production brief"}</p>
+        {project.brief && <details style={{margin:"10px 0",padding:"10px",background:"var(--surface-subtle, #f5f5f7)",borderRadius:10}}><summary style={{cursor:"pointer",fontWeight:700}}>Read customer brief / dedication</summary><p style={{whiteSpace:"pre-wrap",lineHeight:1.55}}>{project.brief}</p></details>}
         <p><strong>{money(project.estimatedTotalMinor, project.currency)}</strong> <small>estimated · {Array.isArray(project.services) ? project.services.map(s=>s.label).join(", ") : "Selected services"}</small></p>
         {isAdmin ? <div style={{display:"grid",gap:8}}>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button className="status-button" onClick={()=>void setStatus(project,"IN_PRODUCTION")}>Start production</button><button className="status-button" onClick={()=>void setStatus(project,"REVIEW")}>Send to review</button><button className="status-button cancelled" onClick={()=>void setStatus(project,"CANCELLED")}>Cancel</button></div>
