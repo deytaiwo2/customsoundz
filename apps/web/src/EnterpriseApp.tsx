@@ -36,6 +36,8 @@ const VendorPaymentRequestsPanel = lazy(() => import("./components/VendorPayment
 const PromotionsPanel = lazy(() => import("./components/PromotionsPanel"));
 const MarketplaceBrowse = lazy(() => import("./components/MarketplaceBrowse"));
 const FeedbackPanel = lazy(() => import("./components/FeedbackPanel"));
+const BookingWorkPanel = lazy(() => import("./components/BookingWorkPanel"));
+const AdminDisputesPanel = lazy(() => import("./components/BookingWorkPanel").then((module) => ({ default: module.AdminDisputesPanel })));
 import { EmptyState } from "./components/EmptyState";
 const KycUpload = lazy(() => import("./components/KycUpload"));
 const SubscriptionsPanel = lazy(() => import("./components/SubscriptionsPanel"));
@@ -289,7 +291,7 @@ function ClientPortal({
   currency: CurrencyCode;
 }) {
   const [tab, setTab] = useDashboardTab(
-    ["overview", "checklist", "planner", "checkin", "marketplace", "wallet", "readiness", "messages", "notifications", "verifiers", "plans", "kyc", "feedback"] as const,
+    ["overview", "checklist", "planner", "checkin", "marketplace", "orders", "wallet", "readiness", "messages", "notifications", "verifiers", "plans", "kyc", "feedback"] as const,
     "marketplace",
   );
   const [bookingNotice, setBookingNotice] = useState("");
@@ -416,6 +418,7 @@ function ClientPortal({
             ["planner", "Event workspace"],
             ["checkin", "Guest check-in"],
             ["marketplace", "Marketplace"],
+            ["orders", "My orders"],
             ["verifiers", "Verifiers"],
             ["wallet", "Wallet & escrow"],
             ["readiness", "Go-live readiness"],
@@ -555,6 +558,8 @@ function ClientPortal({
           />
         </>
       )}
+
+      {tab === "orders" && <BookingWorkPanel mode="customer" />}
 
       {tab === "readiness" && (
         <section className="ess-panel">
@@ -901,7 +906,7 @@ function VendorPortal({
     }
   };
   const [vendorTab, setVendorTab] = useDashboardTab(
-    ["catalog", "wallet", "payments", "plans", "kyc", "messages", "notifications", "promotions", "artist"] as const,
+    ["catalog", "orders", "wallet", "payments", "plans", "kyc", "messages", "notifications", "promotions", "artist"] as const,
     "catalog",
   );
   return (
@@ -928,6 +933,7 @@ function VendorPortal({
       <div className="ess-filter-row" style={{ marginBottom: 12 }}>
         {isArtist && <button type="button" className={vendorTab === "artist" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("artist")}>Artist profile</button>}
         <button type="button" className={vendorTab === "catalog" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("catalog")}>Services & demand</button>
+        <button type="button" className={vendorTab === "orders" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("orders")}>Bookings & delivery</button>
         <button type="button" className={vendorTab === "wallet" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("wallet")}>Wallet & escrow</button>
         <button type="button" className={vendorTab === "payments" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("payments")}>Booking payments</button>
         <button type="button" className={vendorTab === "plans" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("plans")}>Plans & promos</button>
@@ -936,7 +942,9 @@ function VendorPortal({
         <button type="button" className={vendorTab === "notifications" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("notifications")}>Notifications</button>
         <button type="button" className={vendorTab === "promotions" ? "ess-chip ess-chip-active" : "ess-chip"} onClick={() => setVendorTab("promotions")}>Promotions</button>
       </div>
-      {vendorTab === "artist" && isArtist ? (
+      {vendorTab === "orders" ? (
+        <BookingWorkPanel mode="provider" />
+      ) : vendorTab === "artist" && isArtist ? (
         <ArtistProfilePanel />
       ) : vendorTab === "promotions" ? (
         <PromotionsPanel mode="vendor" />
@@ -1803,6 +1811,7 @@ function AdminPortal() {
         </>
       )}
       <FinanceOperationsPanel />
+      <AdminDisputesPanel />
       <AdminControlsPanel />
       <PromotionsPanel mode="admin" />
     </>

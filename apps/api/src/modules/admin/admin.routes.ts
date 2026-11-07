@@ -40,6 +40,30 @@ adminRouter.patch("/listings/:listingId/moderation", asyncHandler(async (req, re
   res.json({ listing: updated });
 }));
 
+/** List open disputes for authorized platform operations staff. */
+adminRouter.get("/bookings/disputes", asyncHandler(async (_req, res) => {
+  const items = await prisma.booking.findMany({
+    where: { status: "DISPUTED" },
+    orderBy: [{ disputedAt: "asc" }, { createdAt: "asc" }],
+    take: 100,
+    include: {
+      buyer: { select: { name: true, email: true } },
+      vendor: { select: { businessName: true } },
+      items: { include: { listing: { select: { title: true } } } },
+    },
+  });
+  res.json({
+    items: items.map((booking) => ({
+      ...booking,
+      subtotalMinor: booking.subtotalMinor.toString(),
+      commissionMinor: booking.commissionMinor.toString(),
+      totalMinor: booking.totalMinor.toString(),
+      paidMinor: booking.paidMinor.toString(),
+      items: booking.items.map((item) => ({ ...item, unitPriceMinor: item.unitPriceMinor.toString() })),
+    })),
+  });
+}));
+
 /** Resolve a customer/provider dispute after reviewing the booking evidence. */
 adminRouter.post("/bookings/:bookingId/resolve-dispute", asyncHandler(async (req, res) => {
   const action = typeof req.body?.action === "string" ? req.body.action.toUpperCase() : "";
