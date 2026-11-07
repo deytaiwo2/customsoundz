@@ -1,4 +1,4 @@
-name: EPHINTA iOS Simulator Build
+name: Dublu Vé iOS Simulator Build
 
 on:
   workflow_dispatch:
@@ -94,7 +94,7 @@ jobs:
       - name: Upload simulator build
         uses: actions/upload-artifact@v4
         with:
-          name: ephinta-ios-simulator-build
+          name: dublu-ve-ios-simulator-build
           path: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/
           if-no-files-found: error
           retention-days: 14

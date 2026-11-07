@@ -35,6 +35,8 @@ jobs:
           --health-retries 20
     env:
       NODE_ENV: test
+      DATABASE_MODE: local
+      DATABASE_URL_LOCAL: postgresql://ess:ess_test_password@127.0.0.1:5432/ess_test?schema=public
       DATABASE_URL: postgresql://ess:ess_test_password@localhost:5432/ess_test?schema=public
       JWT_SECRET: ci-only-secret-change-me-0123456789abcdef0123456789abcdef
       APP_BASE_URL: http://localhost:3000
