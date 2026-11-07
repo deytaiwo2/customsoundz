@@ -4,7 +4,7 @@ declare global {
     interface Request {
       user?: {
         id: string;
-        role: "CLIENT" | "ORGANIZATION" | "VENDOR" | "AFFILIATE" | "CONSULTANT" | "ADMIN" | "VERIFIER";
+        role: "CLIENT" | "ARTIST" | "ORGANIZATION" | "VENDOR" | "AFFILIATE" | "CONSULTANT" | "ADMIN" | "VERIFIER";
         organizationMode?: "EVENT_PLANNING" | "SERVICE_PROVIDER" | null;
       };
     }
