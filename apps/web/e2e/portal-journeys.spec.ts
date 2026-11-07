@@ -169,7 +169,7 @@ test("new artist accounts see artist-specific onboarding before their workspace"
   await loginRequest;
   const onboarding = page.getByRole("dialog", { name: "artist onboarding" });
   await expect(onboarding).toBeVisible();
-  await expect(onboarding.getByRole("heading", { name: "Introduce your creative identity" })).toBeVisible();
+  await expect(onboarding.getByRole("heading", { name: /Introduce your creative identity/ })).toBeVisible();
   await onboarding.getByRole("button", { name: "Skip intro" }).click();
   await expect(page.getByRole("heading", { name: artist.heading }).first()).toBeVisible();
 });
