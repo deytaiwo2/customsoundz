@@ -39,14 +39,17 @@ export default function ProductionProjectsPanel({ payload }: { payload: Payload 
 
   const uploadMaster = async (project: Project, file?: File) => {
     if (!file) return;
+    const extension = file.name.split(".").pop()?.toLowerCase() || "";
+    const fallbackTypes: Record<string, string> = { mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", flac: "audio/flac" };
+    const contentType = file.type && file.type !== "application/octet-stream" ? file.type : fallbackTypes[extension] || "";
     const allowed = ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/aac", "audio/ogg", "audio/flac"];
-    if (!allowed.includes(file.type) || file.size < 128 || file.size > 25 * 1024 * 1024) {
+    if (!allowed.includes(contentType) || file.size < 128 || file.size > 25 * 1024 * 1024) {
       setFeedback("Choose a valid MP3, WAV, M4A, AAC, OGG or FLAC file between 128 bytes and 25 MB.");
       return;
     }
     setUploading(project.id); setFeedback("");
     try {
-      const response = await fetch(apiUrl(`/production-projects/${project.id}/deliverable?fileName=${encodeURIComponent(file.name)}`), { method: "PUT", headers: { Authorization: `Bearer ${payload.accessToken}`, "Content-Type": file.type }, body: file });
+      const response = await fetch(apiUrl(`/production-projects/${project.id}/deliverable?fileName=${encodeURIComponent(file.name)}`), { method: "PUT", headers: { Authorization: `Bearer ${payload.accessToken}`, "Content-Type": contentType }, body: file });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error?.message || "Unable to upload the final master.");
       setFeedback(`Final master uploaded for ${project.reference}. The customer has received an in-app download notification.`);
