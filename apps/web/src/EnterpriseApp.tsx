@@ -2128,7 +2128,6 @@ export default function EnterpriseApp() {
           if (pending) setResumeLabel(pending);
         } catch { /* */ }
       }}
-      onStartBuilder={startEventBuilder}
     />
   );
   if (!session) {

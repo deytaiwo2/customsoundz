@@ -23,7 +23,6 @@ interface LandingPageProps {
 
   onOpenAuth?: (mode: AuthMode, role: AccountRole) => void;
 
-  onStartBuilder?: () => void;
 
 }
 
@@ -155,7 +154,6 @@ export default function PublicLanding({
 
   onOpenAuth,
 
-  onStartBuilder,
 
 }: LandingPageProps) {
 

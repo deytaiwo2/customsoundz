@@ -42,7 +42,7 @@ function mapApi(l: ApiListing): MarketListing {
   };
 }
 
-const CATEGORIES = ["All", "Venue", "Catering", "Décor", "Production", "Rentals"];
+const CATEGORIES = ["All", "Original Songs", "Jingles", "Voice-over", "Mixing & Mastering", "Podcast", "Audio Production"];
 
 export default function MarketplaceBrowse({
   locale = "en",
