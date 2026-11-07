@@ -1,0 +1,84 @@
+name: Dublu Vé Android QA APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master, feature/dublu-ve-integrated-marketplace]
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/**'
+      - 'apps/mobile/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/dublu-ve-android-qa.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/**'
+      - 'apps/mobile/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/dublu-ve-android-qa.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dublu-ve-android-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate API and web code
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://ess:ess@localhost:5432/ess
+          JWT_SECRET: ci-only-secret-change-me-0123456789abcdef0123456789abcdef
+          APP_BASE_URL: http://localhost:3000
+        run: npm run check
+
+      - name: Run web tests
+        run: npm run test -w apps/web
+
+      - name: Build web app for the native shell
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: npm run build:web
+
+      - name: Sync Capacitor Android
+        working-directory: apps/mobile
+        run: npx cap sync android
+
+      - name: Run Android lint, unit tests and debug APK build
+        working-directory: apps/mobile/android
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon lint testDebugUnitTest assembleDebug
+
+      - name: Upload installable QA APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: dublu-ve-android-qa-debug-apk
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
