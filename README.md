@@ -21,13 +21,14 @@ The source application already contains substantial workflows that remain availa
 - Promotions, subscriptions, affiliate/referral tracking and vendor verification.
 - Notifications, event-related messages, admin approvals and audit records.
 - Optional event-planning workflows: event briefs, budgets, tasks, guest lists, RSVP and check-in.
-- Progressive Web App/offline foundations and a Capacitor mobile shell.
+- Progressive Web App/offline foundations and a Capacitor mobile shell, now displaying Dublu Vé branding. The existing native app identifier is intentionally retained for install/update compatibility.
 - Consent-based background audio playback using bundled music tracks.
 
 ## Dublu Vé implementation status
 
 Implemented on the integration branch:
 - A dedicated `ARTIST` role in the Prisma data model and registration API.
+- Public artist directory, artist profile read/update API and an artist profile editor in the creative-provider workspace.
 - An `ArtistProfile` record created during artist registration, including display name, biography, creative category/genre, portfolio metadata, rating and completed-job fields.
 - Artist registration questionnaire and role-specific workspace entry.
 - Artists are authorized to use the existing vendor/creative-provider APIs and workspace.
@@ -35,7 +36,6 @@ Implemented on the integration branch:
 - A Dublu Vé startup wordmark and background-audio consent copy. Existing EPHINTA audio preference keys are still read so saved user choices are not lost.
 
 Not yet complete and must not be represented as live:
-- Public artist discovery and artist-specific profile editing.
 - Portfolio uploads, protected sample streaming and expiring signed audio URLs.
 - Secure final MP3 delivery and production handoff.
 - Verified-completion artist rankings and review aggregation.
