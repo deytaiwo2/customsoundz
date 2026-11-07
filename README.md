@@ -75,3 +75,7 @@ Do not run migrations against production until the database is backed up and the
 - Earlier Dublu Vé foundation: `feature/dublu-ve-entertainments-foundation`
 
 The integration branch is intentionally separate from the default branch until the feature set and QA are reviewed.
+
+## Production readiness
+
+See [the Dublu Vé production-readiness gate](docs/PRODUCTION_READINESS.md) for verified CI coverage, required production configuration and launch blockers.
