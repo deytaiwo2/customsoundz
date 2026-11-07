@@ -52,11 +52,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ ! -d apps/mobile/ios ]]; then
-            npx cap add ios --config apps/mobile/capacitor.config.ts
+            npx cap --config apps/mobile/capacitor.config.ts add ios
           fi
 
       - name: Sync Capacitor iOS
-        run: npx cap sync ios --config apps/mobile/capacitor.config.ts
+        run: npx cap --config apps/mobile/capacitor.config.ts sync ios
 
       - name: List Xcode schemes
         shell: bash
