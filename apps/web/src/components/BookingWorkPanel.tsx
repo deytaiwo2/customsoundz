@@ -33,7 +33,7 @@ function money(amountMinor: string, currency: string) {
 }
 
 function statusLabel(status: string) {
-  return status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return status.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (letter: string) => letter.toUpperCase());
 }
 
 export default function BookingWorkPanel({ mode }: { mode: Mode }) {
