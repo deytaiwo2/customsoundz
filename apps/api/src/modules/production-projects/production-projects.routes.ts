@@ -48,7 +48,7 @@ productionProjectsRouter.post("/", asyncHandler(async (req, res) => {
     ? [{ key: "yuletide", label: `Yuletide special song package (${yuletideSongs} song${yuletideSongs > 1 ? "s" : ""})${storytelling ? " with storytelling" : ""}`, quantity: yuletideSongs, unitPriceMinor: String(yuletideUnitPrice * 100), totalMinor: String(yuletideSongs * yuletideUnitPrice * 100), storytelling, ...(storytelling ? { maximumDuration: "2 minutes 30 seconds" } : {}) }]
     : keys.map((key: string) => ({ key, label: serviceNames[key], unitPriceMinor: String(priceNaira[key] * 100) }));
   const estimatedTotalMinor = isYuletide ? yuletideSongs * yuletideUnitPrice * 100 : keys.reduce((sum: number, key: string) => sum + priceNaira[key] * 100, 0);
-  const projectBrief = [isYuletide ? `YUletide loved-one song\\nRecipient: ${recipientName}\\nOccasion: ${occasion}\\nDedication: ${dedication || "Not supplied"}\\nStorytelling: ${storytelling ? "Yes — maximum 2 minutes 30 seconds" : "No"}\\nPersonal story: ${story || "Not supplied"}` : "", brief].filter(Boolean).join("\\n\\n").slice(0, 3500);
+  const projectBrief = [isYuletide ? `YUletide loved-one song\nRecipient: ${recipientName}\nOccasion: ${occasion}\nDedication: ${dedication || "Not supplied"}\nStorytelling: ${storytelling ? "Yes — maximum 2 minutes 30 seconds" : "No"}\nPersonal story: ${story || "Not supplied"}` : "", brief].filter(Boolean).join("\n\n").slice(0, 3500);
   const reference = `DV-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`;
   const project = await prisma.productionProject.create({
     data: {
