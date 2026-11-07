@@ -26,17 +26,24 @@ productionProjectsRouter.post("/", asyncHandler(async (req, res) => {
   const mood = typeof body.mood === "string" ? body.mood.trim() : "";
   const musicalKey = typeof body.musicalKey === "string" ? body.musicalKey.trim() : "";
   const duration = typeof body.duration === "string" ? body.duration.trim() : "";
+  const isYuletide = body.campaign === "YULETIDE_2026";
+  const yuletideSongs = Number(body.yuletideSongs);
+  const storytelling = body.storytelling === true;
+  const yuletideUnitPrice = yuletideSongs === 1 ? 30000 : yuletideSongs === 2 ? 25000 : yuletideSongs === 3 ? 20000 : 0;
+  const yuletideOfferActive = new Date() <= new Date("2026-12-31T23:59:59.999Z");
   const brief = typeof body.brief === "string" ? body.brief.trim() : "";
   const bpm = Number(body.bpm);
   const keys: string[] = Array.isArray(body.services) ? Array.from(new Set<string>(body.services.map((item: unknown) => item && typeof item === "object" && "key" in item && typeof item.key === "string" ? item.key : ""))) : [];
   if (title.length < 2 || title.length > 100 || !genre || genre.length > 60 || !mood || mood.length > 60 ||
       !musicalKey || musicalKey.length > 30 || !Number.isInteger(bpm) || bpm < 60 || bpm > 200 ||
-      !["15 seconds", "30 seconds", "60 seconds"].includes(duration) || brief.length > 1500 ||
-      !keys.length || keys.length > Object.keys(priceNaira).length || keys.some((key: string) => !priceNaira[key])) {
-    return res.status(400).json({ error: { code: "INVALID_PROJECT_BRIEF", message: "Complete the project details and choose one or more valid production services." } });
+      (!isYuletide && !["15 seconds", "30 seconds", "60 seconds"].includes(duration)) || (isYuletide && (duration !== "Up to 2 minutes 30 seconds" || !yuletideOfferActive || ![1, 2, 3].includes(yuletideSongs))) || brief.length > 1500 ||
+      (isYuletide ? keys.length !== 1 || keys[0] !== "yuletide" : !keys.length || keys.length > Object.keys(priceNaira).length || keys.some((key: string) => !priceNaira[key]))) {
+    return res.status(400).json({ error: { code: "INVALID_PROJECT_BRIEF", message: "Complete the project details and choose a valid production package. The Yuletide offer is available through 31 December 2026." } });
   }
-  const services = keys.map((key: string) => ({ key, label: serviceNames[key], unitPriceMinor: String(priceNaira[key] * 100) }));
-  const estimatedTotalMinor = keys.reduce((sum: number, key: string) => sum + priceNaira[key] * 100, 0);
+  const services = isYuletide
+    ? [{ key: "yuletide", label: `Yuletide special song package (${yuletideSongs} song${yuletideSongs > 1 ? "s" : ""})${storytelling ? " with storytelling" : ""}`, quantity: yuletideSongs, unitPriceMinor: String(yuletideUnitPrice * 100), totalMinor: String(yuletideSongs * yuletideUnitPrice * 100), storytelling, maximumDuration: "2 minutes 30 seconds" }]
+    : keys.map((key: string) => ({ key, label: serviceNames[key], unitPriceMinor: String(priceNaira[key] * 100) }));
+  const estimatedTotalMinor = isYuletide ? yuletideSongs * yuletideUnitPrice * 100 : keys.reduce((sum: number, key: string) => sum + priceNaira[key] * 100, 0);
   const reference = `DV-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`;
   const project = await prisma.productionProject.create({
     data: {
