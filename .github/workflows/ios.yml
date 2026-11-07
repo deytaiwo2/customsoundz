@@ -64,10 +64,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$(find apps/mobile/ios -maxdepth 6 -name '*.xcworkspace' -print -quit)"
-          if [[ -z "$WORKSPACE" ]]; then
-            echo "No .xcworkspace found under apps/mobile/ios."
-            find apps/mobile/ios -maxdepth 5 -type f -print | head -200
+          WORKSPACE="apps/mobile/ios/App/App.xcworkspace"
+          if [[ ! -d "$WORKSPACE" ]]; then
+            echo "CocoaPods workspace not found at $WORKSPACE."
+            find apps/mobile/ios -maxdepth 6 -name '*.xcworkspace' -print
+            exit 1
+          fi
+          if [[ ! -d "apps/mobile/ios/Pods/Pods.xcodeproj" ]]; then
+            echo "CocoaPods project missing after Capacitor sync."
             exit 1
           fi
           echo "Workspace: $WORKSPACE"
@@ -77,7 +81,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$(find apps/mobile/ios -maxdepth 6 -name '*.xcworkspace' -print -quit)"
+          WORKSPACE="apps/mobile/ios/App/App.xcworkspace"
           SCHEME="$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | awk '/Schemes:/{flag=1;next} flag && NF {gsub(/^[[:space:]]+/, ""); print; exit}')"
           if [[ -z "$SCHEME" ]]; then
             echo "Could not automatically detect the Xcode scheme."

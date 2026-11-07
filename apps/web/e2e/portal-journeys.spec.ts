@@ -12,7 +12,7 @@ const portals: PortalCase[] = [
   { role: "ARTIST", email: "qa-artist@example.com", heading: /Make your sound bookable\./ },
   { role: "ORGANIZATION", email: "qa-org-planning@example.com", organizationMode: "EVENT_PLANNING", heading: /Welcome back, QA\./ },
   { role: "ORGANIZATION", email: "qa-org-provider@example.com", organizationMode: "SERVICE_PROVIDER", heading: /Grow your creative services\./ },
-  { role: "VENDOR", email: "qa-vendor@example.com", heading: /Sell the experience\./ },
+  { role: "VENDOR", email: "qa-vendor@example.com", heading: /Grow your creative services\./ },
   { role: "AFFILIATE", email: "qa-affiliate@example.com", heading: /Grow the event network\./ },
   { role: "VERIFIER", email: "qa-verifier@example.com", heading: /Pre-event service confirmation/ },
   { role: "CONSULTANT", email: "qa-consultant@example.com", heading: /Operations updates/ },
@@ -51,7 +51,7 @@ async function installRoleApiFixtures(page: Page, portal: PortalCase, options: {
       });
     }
     if (path.endsWith("/artist/profile")) return json({ profile: { displayName: "QA Artist", bio: "Test artist profile", genres: ["Original songs"] } });
-    if (path.endsWith("/vendor/categories")) return json({ items: [{ id: "cat-catering", name: "Catering" }] });
+    if (path.endsWith("/vendor/categories")) return json({ items: [{ id: "cat-audio", name: "Original Songs & Custom Music" }] });
     if (path.endsWith("/vendor/listings") && request.method() === "POST") {
       const body = request.postDataJSON() as Record<string, unknown>;
       return json({
@@ -65,7 +65,7 @@ async function installRoleApiFixtures(page: Page, portal: PortalCase, options: {
           capacity: body.capacity || 100,
           status: "DRAFT",
           type: body.type || "SERVICE",
-          category: { name: "Catering" },
+          category: { name: "Original Songs & Custom Music" },
         },
       }, 201);
     }
@@ -129,8 +129,8 @@ for (const portal of portals) {
     } else if (portal.role === "VENDOR" || (portal.role === "ORGANIZATION" && portal.organizationMode === "SERVICE_PROVIDER")) {
       await page.getByRole("button", { name: "Add your first listing" }).click();
       await expect(page.getByRole("heading", { name: "Add service package" })).toBeVisible();
-      await page.getByLabel("Package name").fill("QA Catering Package");
-      await page.getByLabel("What is included?").fill("Test-only catering package");
+      await page.getByLabel("Package name").fill("QA Audio Production Package");
+      await page.getByLabel("What is included?").fill("Test-only audio production package");
       await page.getByLabel("Price").fill("50000");
       await page.getByLabel("Capacity").fill("120");
       await page.getByLabel("Operating city").fill("Ibadan");

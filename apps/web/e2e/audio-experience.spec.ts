@@ -24,7 +24,7 @@ test("music consent is a small corner prompt and accepted playback advances auto
   await prompt.getByRole("button", { name: "Yes, play music" }).click();
   await expect(prompt).toHaveCount(0);
   await expect.poll(() =>
-    page.evaluate(() => localStorage.getItem("ephinta:sound")),
+    page.evaluate(() => localStorage.getItem("dubluve:sound")),
   ).toBe("on");
   await expect.poll(() =>
     page.evaluate(() => (window as Window & { musicPlayCalls: number }).musicPlayCalls),
@@ -52,7 +52,7 @@ test("declining music closes the prompt and remembers the choice", async ({ page
 
   await expect(prompt).toHaveCount(0);
   await expect.poll(() =>
-    page.evaluate(() => localStorage.getItem("ephinta:sound")),
+    page.evaluate(() => localStorage.getItem("dubluve:sound")),
   ).toBe("off");
   await expect.poll(() =>
     page.evaluate(() => (window as Window & { musicPlayCalls: number }).musicPlayCalls),
