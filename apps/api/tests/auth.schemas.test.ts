@@ -56,3 +56,17 @@ describe("organization registration modes", () => {
     ).toBe(false);
   });
 });
+
+
+describe("artist registration", () => {
+  it("accepts artist accounts for the Dublu Vé creative marketplace", () => {
+    expect(registerSchema.safeParse({
+      ...validRegistration,
+      role: "ARTIST",
+      businessName: "Wale Waves Studio",
+      registrationCategory: "Original songs",
+      businessCity: "Ibadan",
+      businessDescription: "Original music and audio production.",
+    }).success).toBe(true);
+  });
+});

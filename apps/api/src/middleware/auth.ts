@@ -7,6 +7,7 @@ type RoleName = NonNullable<Express.Request["user"]>["role"];
 
 const isActiveRole = (role: unknown): role is RoleName =>
   role === "CLIENT" ||
+  role === "ARTIST" ||
   role === "ORGANIZATION" ||
   role === "VENDOR" ||
   role === "AFFILIATE" ||
@@ -17,6 +18,7 @@ const isActiveRole = (role: unknown): role is RoleName =>
 export function hasRole(user: Express.Request["user"], role: RoleName): boolean {
   if (!user) return false;
   if (user.role === role) return true;
+  if (role === "VENDOR" && user.role === "ARTIST") return true;
   if (user.role !== "ORGANIZATION") return false;
   return (
     (role === "CLIENT" && user.organizationMode === "EVENT_PLANNING") ||

@@ -14,3 +14,12 @@ describe("organization mode authorization", () => {
     expect(hasRole(user, "CLIENT")).toBe(false);
   });
 });
+
+
+describe("artist authorization", () => {
+  it("allows artists to use the existing creative-provider workspace and vendor APIs", () => {
+    const artist = { id: "artist-user", role: "ARTIST" as const, organizationMode: null };
+    expect(hasRole(artist, "VENDOR")).toBe(true);
+    expect(hasRole(artist, "CLIENT")).toBe(false);
+  });
+});

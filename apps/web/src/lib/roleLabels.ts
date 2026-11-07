@@ -1,6 +1,7 @@
 /** User-facing labels for accounts that can register themselves. */
 export const ROLE_LABELS: Record<string, string> = {
-  CLIENT: 'Event Planner',
+  CLIENT: 'Customer',
+  ARTIST: 'Artist',
   ORGANIZATION: 'Organizer',
   VENDOR: 'Vendor',
   AFFILIATE: 'Affiliate',
@@ -17,6 +18,7 @@ export function roleLabel(role: string | undefined | null): string {
 /** Roles accepted by the public registration endpoint. ADMIN remains invitation-only. */
 export const SELF_REGISTER_ROLES = [
   'CLIENT',
+  'ARTIST',
   'ORGANIZATION',
   'VENDOR',
   'AFFILIATE',

@@ -17,7 +17,7 @@ export const registerSchema = z
     email: z.string().email().toLowerCase(),
     password: passwordSchema,
     name: z.string().trim().min(2).max(100),
-    role: z.enum(["CLIENT", "ORGANIZATION", "VENDOR", "AFFILIATE", "VERIFIER", "CONSULTANT"]).default("CLIENT"),
+    role: z.enum(["CLIENT", "ARTIST", "ORGANIZATION", "VENDOR", "AFFILIATE", "VERIFIER", "CONSULTANT"]).default("CLIENT"),
     organizationMode: z.enum(["EVENT_PLANNING", "SERVICE_PROVIDER"]).optional(),
     registrationCategory: z.string().trim().min(2).max(80).optional(),
     referralCode: z.string().trim().max(80).optional(),

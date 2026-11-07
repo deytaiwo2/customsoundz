@@ -11,6 +11,7 @@ datasource db {
 
 enum Role {
   CLIENT
+  ARTIST
   ORGANIZATION
   VENDOR
   RIDER
@@ -188,6 +189,7 @@ model User {
   refreshTokens    RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   vendorProfile    VendorProfile?
+  artistProfile    ArtistProfile?
   events           Event[]
   wallets          Wallet[]
   bookings         Booking[]             @relation("BuyerBookings")
@@ -263,6 +265,23 @@ model VendorProfile {
   promotions Promotion[]
   reviews    Review[]
   checkoutItems CheckoutItem[]
+}
+
+model ArtistProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  displayName   String
+  bio           String?
+  genres        String[] @default([])
+  portfolio     Json?
+  averageRating Float    @default(0)
+  completedJobs Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([averageRating])
+  @@index([completedJobs])
 }
 
 model Shop {

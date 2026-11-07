@@ -55,7 +55,7 @@ import {
   t,
 } from "./lib/i18n";
 
-type Role = "CLIENT" | "ORGANIZATION" | "VENDOR" | "AFFILIATE" | "VERIFIER" | "CONSULTANT" | "ADMIN";
+type Role = "CLIENT" | "ARTIST" | "ORGANIZATION" | "VENDOR" | "AFFILIATE" | "VERIFIER" | "CONSULTANT" | "ADMIN";
 type OrganizationMode = "EVENT_PLANNING" | "SERVICE_PROVIDER";
 type Status = "Pending" | "Confirmed" | "Completed" | "Revision";
 
@@ -116,9 +116,14 @@ const roleMeta: Record<
   { label: string; short: string; description: string }
 > = {
   CLIENT: {
-    label: "Event planner",
+    label: "Customer",
     short: "Event planner",
     description: "Plan, budget, invite guests and book verified services.",
+  },
+  ARTIST: {
+    label: "Artist",
+    short: "Artist",
+    description: "Publish your creative profile, list audio services and manage paid projects.",
   },
   ORGANIZATION: {
     label: "Organizer",
@@ -153,7 +158,8 @@ const roleMeta: Record<
 };
 
 const registrationProfileLabel: Record<SelfRegisterRole, string> = {
-  CLIENT: "Planning profile",
+  CLIENT: "Customer profile",
+  ARTIST: "Artist profile",
   ORGANIZATION: "Organization profile",
   VENDOR: "Business profile",
   AFFILIATE: "Referral profile",
@@ -162,7 +168,8 @@ const registrationProfileLabel: Record<SelfRegisterRole, string> = {
 };
 
 const registrationBenefits: Record<SelfRegisterRole, string[]> = {
-  CLIENT: ["Plan and budget events", "Discover trusted services", "Keep event tasks together"],
+  CLIENT: ["Discover artists and audio services", "Request custom music and production", "Track briefs, bookings and delivery"],
+  ARTIST: ["Create an artist or studio profile", "List music, voice and production services", "Manage bookings, payments and reviews"],
   ORGANIZATION: ["Coordinate your organization", "Manage team event work", "Choose planning or service delivery"],
   VENDOR: ["Manage service listings", "Receive booking requests", "Track payments and verification"],
   AFFILIATE: ["Share trusted referrals", "Track referral activity", "View commission progress"],
@@ -861,10 +868,10 @@ function VendorPortal({
     <>
       <div className="ess-page-heading">
         <div>
-          <p className="ess-eyebrow">Vendor command center</p>
-          <h1>Sell the experience.</h1>
+          <p className="ess-eyebrow">Creative partner command center</p>
+          <h1>Make your sound bookable.</h1>
           <p>
-            Manage your catalog, requests, and international earnings from one
+            Manage your creative services, bookings, requests and earnings from one
             view.
           </p>
         </div>
@@ -1944,16 +1951,16 @@ export default function EnterpriseApp() {
               organizationMode: selectedRole === "ORGANIZATION" ? organizationMode : undefined,
               registrationCategory: registrationCategory || undefined,
               referralCode: referralCode || undefined,
-              businessName: selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER") ? business : undefined,
+              businessName: selectedRole === "ARTIST" || selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER") ? business : undefined,
               phone:
-                selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER")
+                selectedRole === "ARTIST" || selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER")
                   ? vendorPhone
                   : undefined,
-              businessCity: selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER") ? vendorCity : undefined,
+              businessCity: selectedRole === "ARTIST" || selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER") ? vendorCity : undefined,
               businessDescription:
-                selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER") ? vendorDescription : undefined,
+                selectedRole === "ARTIST" || selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER") ? vendorDescription : undefined,
               kycDocumentUrl:
-                (selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER")) && vendorKycUrl
+                (selectedRole === "ARTIST" || selectedRole === "VENDOR" || (selectedRole === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER")) && vendorKycUrl
                   ? vendorKycUrl
                   : undefined,
               country,
@@ -2018,7 +2025,7 @@ export default function EnterpriseApp() {
   const portal =
     session && (activeRole === "CLIENT" || (activeRole === "ORGANIZATION" && session.organizationMode === "EVENT_PLANNING")) ? (
       <ClientPortal session={session} locale={localePref} country={country} currency={currency} />
-    ) : session && (activeRole === "VENDOR" || (activeRole === "ORGANIZATION" && session.organizationMode === "SERVICE_PROVIDER")) ? (
+    ) : session && (activeRole === "ARTIST" || activeRole === "VENDOR" || (activeRole === "ORGANIZATION" && session.organizationMode === "SERVICE_PROVIDER")) ? (
       <VendorPortal
         listings={listings}
         setListings={setListings}
@@ -2710,6 +2717,16 @@ const roleQuestionnaires: Record<
   Exclude<SelfRegisterRole, "CLIENT">,
   { title: string; intro: string; fields: RoleQuestionnaireField[] }
 > = {
+  ARTIST: {
+    title: "Build your artist profile",
+    intro: "Tell customers what you create so they can discover and book your work.",
+    fields: [
+      { key: "businessName", label: "Artist or studio name", type: "text", required: true, placeholder: "e.g. Wale Waves Studio", maxLength: 120 },
+      { key: "registrationCategory", label: "Primary creative service", type: "select", required: true, options: ["Original songs", "Jingles and advertising", "Voice-over and narration", "Mixing and mastering", "Podcast production", "Live performance", "Other audio services"] },
+      { key: "businessCity", label: "Main service location", type: "text", required: true, placeholder: "e.g. Ibadan", maxLength: 120 },
+      { key: "businessDescription", label: "Artist bio and experience", type: "textarea", placeholder: "Describe your sound, style and experience.", maxLength: 1000 },
+    ],
+  },
   VENDOR: {
     title: "Tell us about your services",
     intro: "A few details help us prepare a useful vendor workspace. You can refine your profile later.",
@@ -2942,14 +2959,14 @@ function PublicHome({
           title="Choose your lane"
         />
         <div className="ess-role-grid">
-          {(["CLIENT", "ORGANIZATION", "VENDOR"] as Role[]).map((role) => (
+          {(["CLIENT", "ARTIST", "ORGANIZATION", "VENDOR"] as Role[]).map((role) => (
             <button
               className="ess-role-card"
               key={role}
               onClick={() => onRole(role)}
             >
               <span className="ess-role-symbol">
-                {role === "CLIENT" ? "◈" : role === "ORGANIZATION" ? "▧" : "▦"}
+                {role === "CLIENT" ? "◈" : role === "ARTIST" ? "♫" : role === "ORGANIZATION" ? "▧" : "▦"}
               </span>
               <strong>{roleMeta[role].short}</strong>
               <span>{roleMeta[role].description}</span>
@@ -3157,7 +3174,7 @@ function AuthModal({
               </label>
             </fieldset>
           )}
-          {mode === "signup" && registrationStep === 1 && (role === "VENDOR" || (role === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER")) && (
+          {mode === "signup" && registrationStep === 1 && (role === "ARTIST" || role === "VENDOR" || (role === "ORGANIZATION" && organizationMode === "SERVICE_PROVIDER")) && (
             <>
               <label>
                 Business name

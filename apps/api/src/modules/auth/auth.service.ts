@@ -61,18 +61,30 @@ export async function register(input: RegisterInput, userAgent?: string) {
       await tx.wallet.create({ data: { userId: u.id, currency: input.currency } });
       if (
         input.role === "VENDOR" ||
+        input.role === "ARTIST" ||
         (input.role === "ORGANIZATION" && input.organizationMode === "SERVICE_PROVIDER")
       ) {
+        const profileName = input.businessName || input.name;
         await tx.vendorProfile.create({
           data: {
             userId: u.id,
-            businessName: input.businessName!,
-            slug: `${slugify(input.businessName!)}-${randomBytes(3).toString("hex")}`,
+            businessName: profileName,
+            slug: `${slugify(profileName)}-${randomBytes(3).toString("hex")}`,
             description: input.businessDescription,
             country: input.country,
             city: input.businessCity,
           },
         });
+        if (input.role === "ARTIST") {
+          await tx.artistProfile.create({
+            data: {
+              userId: u.id,
+              displayName: profileName,
+              bio: input.businessDescription,
+              genres: input.registrationCategory ? [input.registrationCategory] : [],
+            },
+          });
+        }
         if (input.kycDocumentUrl) {
           await tx.verificationRequest.create({ data: { userId: u.id, kind: "BUSINESS", documentUrl: input.kycDocumentUrl } });
         }
