@@ -24,6 +24,9 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
   const [duration, setDuration] = useState("30 seconds");
   const [brief, setBrief] = useState("");
   const [services, setServices] = useState<ServiceKey[]>(["jingle", "beat", "mix", "master"]);
+  const [yuletide, setYuletide] = useState(false);
+  const [yuletideSongs, setYuletideSongs] = useState(1);
+  const [storytelling, setStorytelling] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
@@ -31,14 +34,15 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
   const [error, setError] = useState("");
   const audioContext = useRef<AudioContext | null>(null);
   const timers = useRef<number[]>([]);
-  const total = useMemo(() => SERVICES.filter(s => services.includes(s.key)).reduce((sum, s) => sum + s.price, 0), [services]);
+  const yuletideUnitPrice = yuletideSongs === 1 ? 30000 : yuletideSongs === 2 ? 25000 : 20000;
+  const total = useMemo(() => yuletide ? yuletideSongs * yuletideUnitPrice : SERVICES.filter(s => services.includes(s.key)).reduce((sum, s) => sum + s.price, 0), [services, yuletide, yuletideSongs, yuletideUnitPrice]);
   const selected = SERVICES.filter(s => services.includes(s.key));
 
   async function refreshProjects() {
     try { const data = await api<{ items: ProjectRow[] }>("/production-projects"); setProjects(Array.isArray(data.items) ? data.items : []); } catch { /* Customer project history is optional until signed in. */ }
   }
   useEffect(() => {
-    try { const saved = localStorage.getItem("dubluve:pending-production-project"); if (saved) { const draft = JSON.parse(saved); setTitle(draft.title || "My first Dublu Vé track"); setGenre(draft.genre || "Afrobeats"); setMood(draft.mood || "Uplifting"); setKey(draft.musicalKey || "C major"); setBpm(Number(draft.bpm) || 104); setDuration(draft.duration || "30 seconds"); setBrief(draft.brief || ""); if (Array.isArray(draft.services)) setServices(draft.services.map((item: { key: ServiceKey }) => item.key).filter((key: string) => SERVICES.some(service => service.key === key))); } } catch { /* Ignore an invalid local draft. */ }
+    try { const saved = localStorage.getItem("dubluve:pending-production-project"); if (saved) { const draft = JSON.parse(saved); setTitle(draft.title || "My first Dublu Vé track"); setGenre(draft.genre || "Afrobeats"); setMood(draft.mood || "Uplifting"); setKey(draft.musicalKey || "C major"); setBpm(Number(draft.bpm) || 104); setDuration(draft.duration || "30 seconds"); setBrief(draft.brief || ""); if (Array.isArray(draft.services)) setServices(draft.services.map((item: { key: ServiceKey }) => item.key).filter((key: string) => SERVICES.some(service => service.key === key))); setYuletide(Boolean(draft.yuletide)); setYuletideSongs([1,2,3].includes(Number(draft.yuletideSongs)) ? Number(draft.yuletideSongs) : 1); setStorytelling(Boolean(draft.storytelling)); } } catch { /* Ignore an invalid local draft. */ }
     void refreshProjects();
     return () => { timers.current.forEach(window.clearTimeout); void audioContext.current?.close(); };
   }, []);
@@ -74,9 +78,9 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
 
   async function assignProject() {
     setError(""); setNotice("");
-    if (!title.trim() || !services.length) { setError("Add a project name and select at least one production service."); return; }
+    if (!title.trim() || (!yuletide && !services.length)) { setError("Add a project name and select at least one production service."); return; }
     setSending(true);
-    const project = { title: title.trim(), genre, mood, musicalKey: key, bpm, duration, brief: brief.trim(), services: selected.map(s => ({ key: s.key, label: s.label, unitPriceMinor: s.price * 100 })), estimatedTotalMinor: total * 100, currency: "NGN" };
+    const project = { title: title.trim(), genre, mood, musicalKey: key, bpm, duration: yuletide ? "Up to 2 minutes 30 seconds" : duration, brief: [brief.trim(), yuletide && storytelling ? "YUletide storytelling option: include a personal story/message for the loved one; maximum finished song length 2 minutes 30 seconds." : ""].filter(Boolean).join("\\n\\n"), campaign: yuletide ? "YULETIDE_2026" : undefined, yuletideSongs: yuletide ? yuletideSongs : undefined, storytelling: yuletide && storytelling, services: yuletide ? [{ key: "yuletide", label: `Yuletide special song package (${yuletideSongs} song${yuletideSongs > 1 ? "s" : ""})`, quantity: yuletideSongs, unitPriceMinor: yuletideUnitPrice * 100 }] : selected.map(s => ({ key: s.key, label: s.label, unitPriceMinor: s.price * 100 })), estimatedTotalMinor: total * 100, currency: "NGN" };
     try {
       localStorage.setItem("dubluve:pending-production-project", JSON.stringify(project));
       let data: { project: { reference: string; status: string } };
@@ -105,7 +109,11 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
       @media(max-width:820px){.dv-studio-grid{grid-template-columns:1fr}}@media(max-width:520px){.dv-studio-row,.dv-studio-services{grid-template-columns:1fr}.dv-studio-panel{padding:17px}}
     `}</style>
     <div className="dv-studio-inner">
-      <div className="dv-studio-head"><small>TRY THE SOUND BEFORE YOU ORDER</small><h2>Build a sample. Price your production.</h2><p>Shape a short musical idea, hear a browser-generated demo, choose the production services you need and see an itemised estimate before sending the project to our team.</p></div>
+      <div className="dv-studio-head"><small>TRY THE SOUND BEFORE YOU ORDER</small><h2>Build a sample. Price your production.</h2><p>Shape a musical idea, hear a browser-generated demo, choose production services or create a personal Yuletide song for someone special.</p></div>
+      <div className="dv-studio-panel" style={{maxWidth:900,margin:"0 auto 20px",borderColor:"#e7b6ff88",background:"linear-gradient(120deg,#3b2458,#29234d)"}}>
+        <div style={{display:"flex",flexWrap:"wrap",justifyContent:"space-between",alignItems:"center",gap:12}}><div><div style={{color:"#f2c9ff",fontWeight:900,letterSpacing:".12em",fontSize:12}}>DUBLU VÉ YULETIDE SPECIAL · UNTIL 31 DECEMBER 2026</div><h3 style={{fontSize:24,margin:"8px 0"}}>Give someone a song made from your story.</h3><p style={{color:"#e0d5f1",margin:"0 0 12px",lineHeight:1.6}}>Create an original occasional song for a loved one. Share a dedication, memory or personal story. Optional storytelling format, up to 2 minutes 30 seconds.</p></div><label style={{display:"flex",alignItems:"center",gap:9,margin:0}}><input type="checkbox" checked={yuletide} onChange={e=>setYuletide(e.target.checked)} style={{width:20,height:20,margin:0}}/><strong>Choose Yuletide offer</strong></label></div>
+        {yuletide && <><div className="dv-studio-row" style={{marginTop:12}}><label>Number of songs<select value={yuletideSongs} onChange={e=>setYuletideSongs(Number(e.target.value))}><option value={1}>1 song · ₦30,000 total</option><option value={2}>2 songs · ₦25,000 each (₦50,000 total)</option><option value={3}>3 songs · ₦20,000 each (₦60,000 total)</option></select></label><label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={storytelling} onChange={e=>setStorytelling(e.target.checked)} style={{width:18,margin:0}}/><span>Include personal storytelling (optional, up to 2:30)</span></label></div><p className="dv-studio-muted">Selected package: {yuletideSongs} song{yuletideSongs > 1 ? "s" : ""} × {money(yuletideUnitPrice)} = <strong>{money(total)}</strong>. Storytelling details can be added in your brief below.</p></>}
+      </div>
       <div className="dv-studio-grid">
         <div className="dv-studio-panel">
           <div className="dv-studio-row">
@@ -125,11 +133,11 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
           <button type="button" className="dv-studio-btn" onClick={()=>void preview()}>{playing ? "Stop sample ■" : "▶ Play my sample idea"}</button>
         </div>
         <aside className="dv-studio-panel">
-          <h3 style={{marginTop:0}}>Choose your production services</h3>
-          <div className="dv-studio-services">{SERVICES.map(s=><label className="dv-studio-service" key={s.key}><input type="checkbox" checked={services.includes(s.key)} onChange={()=>toggle(s.key)}/><span><b>{s.label}</b><span className="dv-studio-muted">{s.detail}</span><br/><strong>{money(s.price)}</strong></span></label>)}</div>
+          {!yuletide && <><h3 style={{marginTop:0}}>Choose your production services</h3>
+          <div className="dv-studio-services">{SERVICES.map(s=><label className="dv-studio-service" key={s.key}><input type="checkbox" checked={services.includes(s.key)} onChange={()=>toggle(s.key)}/><span><b>{s.label}</b><span className="dv-studio-muted">{s.detail}</span><br/><strong>{money(s.price)}</strong></span></label>)}</div></>}
           <div style={{marginTop:20,paddingTop:16,borderTop:"1px solid #ffffff2b"}}><div className="dv-studio-muted">Estimated production total</div><div className="dv-studio-total">{money(total)}</div><p className="dv-studio-muted">Estimate based on the selected service menu. Final quote is confirmed by the production team after reviewing duration, complexity, revisions and deliverables. Taxes or third-party talent fees may change the final amount.</p>
-          {selected.map(s=><div className="dv-studio-line" key={s.key}><span>{s.label}</span><strong>{money(s.price)}</strong></div>)}
-          <button type="button" className="dv-studio-btn" style={{width:"100%",marginTop:16}} disabled={sending || !services.length} onClick={()=>void assignProject()}>{sending ? "Sending project…" : "Assign project to Dublu Vé Production →"}</button>
+          {yuletide ? <div className="dv-studio-line"><span>Yuletide special · {yuletideSongs} song{yuletideSongs > 1 ? "s" : ""}{storytelling ? " · storytelling" : ""}</span><strong>{money(total)}</strong></div> : selected.map(s=><div className="dv-studio-line" key={s.key}><span>{s.label}</span><strong>{money(s.price)}</strong></div>)}
+          <button type="button" className="dv-studio-btn" style={{width:"100%",marginTop:16}} disabled={sending || (!yuletide && !services.length)} onClick={()=>void assignProject()}>{sending ? "Sending project…" : "Assign project to Dublu Vé Production →"}</button>
           {notice && <div className="dv-studio-notice" role="status">{notice}</div>}{error && <div className="dv-studio-error" role="alert">{error}</div>}
           {projects.length > 0 && <div style={{marginTop:22,borderTop:"1px solid #ffffff2b",paddingTop:16}}><h3>Your production projects</h3>{projects.map(project=><div key={project.id} className="dv-studio-line" style={{alignItems:"center"}}><span><strong>{project.title}</strong><br/><span className="dv-studio-muted">{project.reference} · {project.status.replace("_"," ")}</span></span>{project.status === "READY" ? <button type="button" className="dv-studio-btn" onClick={()=>void downloadProtectedFile(`/production-projects/${project.id}/download`, project.deliveryFileName || `${project.reference}-final-audio`).catch(e=>setError(e instanceof Error ? e.message : "Download failed."))} style={{fontSize:12}}>Download</button> : <span className="dv-studio-muted">In progress</span>}</div>)}</div>}
           </div>
