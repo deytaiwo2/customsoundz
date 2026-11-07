@@ -994,7 +994,8 @@ paymentsRouter.post(
     if (booking.paidMinor !== booking.totalMinor) {
       throw new HttpError(409, "BOOKING_NOT_FULLY_FUNDED", "The customer must complete the agreed payment before files can be delivered.");
     }
-    if (![BookingStatus.PAID, BookingStatus.CONFIRMED, BookingStatus.DELIVERED].includes(booking.status)) {
+    const uploadableStatuses: BookingStatus[] = [BookingStatus.PAID, BookingStatus.CONFIRMED, BookingStatus.DELIVERED];
+    if (!uploadableStatuses.includes(booking.status)) {
       throw new HttpError(409, "INVALID_DELIVERY_STATE", `Cannot upload files while booking is ${booking.status.toLowerCase()}.`);
     }
 
@@ -1007,7 +1008,7 @@ paymentsRouter.post(
           select: { id: true, status: true, eventId: true, paidMinor: true, totalMinor: true },
         });
         if (!current || current.eventId || current.paidMinor !== current.totalMinor ||
-          ![BookingStatus.PAID, BookingStatus.CONFIRMED, BookingStatus.DELIVERED].includes(current.status)) {
+          !uploadableStatuses.includes(current.status)) {
           throw new HttpError(409, "BOOKING_CHANGED", "The booking changed before the audio file could be attached.");
         }
         const created = await tx.bookingDeliveryAsset.create({
@@ -1061,7 +1062,7 @@ paymentsRouter.get(
     const isProvider = booking.vendor.userId === req.user!.id;
     const isAdmin = req.user!.role === "ADMIN";
     if (!isBuyer && !isProvider && !isAdmin) throw new HttpError(403, "FORBIDDEN", "You cannot access this booking's audio files.");
-    if (isBuyer && ![BookingStatus.DELIVERED, BookingStatus.DISPUTED, BookingStatus.FULFILLED].includes(booking.status)) {
+    if (isBuyer && booking.status !== BookingStatus.DELIVERED && booking.status !== BookingStatus.DISPUTED && booking.status !== BookingStatus.FULFILLED) {
       throw new HttpError(409, "DELIVERY_NOT_AVAILABLE", "The provider has not submitted this delivery yet.");
     }
     const asset = await prisma.bookingDeliveryAsset.findFirst({
