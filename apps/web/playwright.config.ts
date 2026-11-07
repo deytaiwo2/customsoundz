@@ -37,7 +37,7 @@ export default defineConfig({
   webServer: [
     ...(process.env.ESS_E2E_WITH_API === "true"
       ? [{
-          command: "npm run dev -w apps/api",
+          command: "cd ../.. && npm run dev -w apps/api",
           url: "http://127.0.0.1:5000/health",
           timeout: 120_000,
           reuseExistingServer: !process.env.CI,
