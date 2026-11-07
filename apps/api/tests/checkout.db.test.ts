@@ -90,8 +90,12 @@ describe.skipIf(!run)("Dublu Vé standalone creative-service checkout (DB)", () 
       expect(afterReplay.availableMinor).toBe(250000n);
       expect(afterReplay.escrowMinor).toBe(250000n);
     } finally {
-      await prisma.user.deleteMany({ where: { id: { in: [customer.id, artist.id] } } });
+      await prisma.booking.deleteMany({ where: { buyerId: customer.id } });
+      await prisma.checkoutSession.deleteMany({ where: { userId: customer.id } });
+      await prisma.cart.deleteMany({ where: { userId: customer.id } });
+      await prisma.ledgerEntry.deleteMany({ where: { walletId: wallet.id } });
       await prisma.listing.deleteMany({ where: { id: listing.id } });
+      await prisma.user.deleteMany({ where: { id: { in: [customer.id, artist.id] } } });
       await prisma.category.deleteMany({ where: { id: category.id } });
     }
   }, 30_000);
