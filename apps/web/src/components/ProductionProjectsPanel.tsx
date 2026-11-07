@@ -11,7 +11,7 @@ export default function ProductionProjectsPanel({ payload }: { payload: Payload 
   const [items, setItems] = useState<Project[]>([]);
   const [busy, setBusy] = useState(true);
   const [feedback, setFeedback] = useState("");
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);\n  const [pendingDraft, setPendingDraft] = useState<Record<string, unknown> | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -24,7 +24,7 @@ export default function ProductionProjectsPanel({ payload }: { payload: Payload 
     finally { setBusy(false); }
   }, [isAdmin, payload.accessToken]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {\n    try { const saved = localStorage.getItem("dubluve:pending-production-project"); if (saved) setPendingDraft(JSON.parse(saved)); } catch { /* Ignore invalid local drafts. */ }\n    void load();\n  }, [load]);\n\n  const submitSavedDraft = async () => {\n    if (!pendingDraft) return;\n    setFeedback("");\n    try {\n      const response = await fetch(apiUrl("/production-projects"), { method: "POST", headers: { Authorization: `Bearer ${payload.accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(pendingDraft) });\n      const data = await response.json().catch(() => ({}));\n      if (!response.ok) throw new Error(data?.error?.message || "Unable to assign your saved brief.");\n      localStorage.removeItem("dubluve:pending-production-project"); setPendingDraft(null);\n      setFeedback(`Project ${data.project?.reference || ""} has been assigned to Dublu Vé Production.`);\n      await load();\n    } catch (error) { setFeedback(error instanceof Error ? error.message : "Unable to submit the saved brief."); }\n  };
 
   const setStatus = async (project: Project, status: string) => {
     setFeedback("");
@@ -61,7 +61,7 @@ export default function ProductionProjectsPanel({ payload }: { payload: Payload 
   return <section className="workspace-card" style={{marginBottom:24}} aria-labelledby="production-projects-title">
     <div className="section-header"><div><p className="eyebrow">{isAdmin ? "Dublu Vé Production" : "Your audio orders"}</p><h2 id="production-projects-title">{isAdmin ? "Production queue" : "My production projects"}</h2></div><button className="secondary-button" onClick={()=>void load()} disabled={busy}>Refresh</button></div>
     <p>{isAdmin ? "Review incoming briefs, move work through production and upload the approved final master. Uploading notifies the customer and unlocks a private download." : "Track your brief from assignment to final master. When production marks a project ready, download it securely here."}</p>
-    {feedback && <p className="detail-feedback" role="status">{feedback}</p>}
+    {feedback && <p className="detail-feedback" role="status">{feedback}</p>}\n    {!isAdmin && pendingDraft && <div className="empty-marketplace" style={{marginBottom:16}}><strong>Your sample project is saved.</strong><span>Sign-in interrupted the assignment. Submit your saved brief now to send it to Dublu Vé Production.</span><button className="primary-button" onClick={()=>void submitSavedDraft()}>Assign saved project to production →</button></div>}
     {busy ? <p>Loading projects…</p> : items.length === 0 ? <div className="empty-marketplace"><strong>{isAdmin ? "No production requests yet." : "No audio projects assigned yet."}</strong><span>Use the public landing-page studio to build a sample and send your first brief.</span></div> :
       <div className="listing-grid">{items.map(project=><article className="listing-card" key={project.id}>
         <p className="eyebrow">{project.reference} · {project.status.replace("_"," ")}</p><h3>{project.title}</h3>
