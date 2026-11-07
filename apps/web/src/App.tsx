@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import PublicLanding from './components/PublicLanding';
 import SplashLogo from './components/SplashLogo';
 import AudioExperience from './components/AudioExperience';
+import ProductionProjectsPanel from './components/ProductionProjectsPanel';
 
 import { initializeEphintaTheme } from "./lib/ephintaTheme";
 import { prepareKycUpload } from "./lib/prepareKycUpload";
@@ -511,7 +512,7 @@ function Workspace({ payload, onLogout }: { payload: AuthPayload; onLogout: () =
           <p className="workspace-subtitle">Your event planning workspace is ready. Sign out to switch to a vendor account.</p>
         </div>
         <button className="secondary-button" onClick={onLogout}>Sign out</button>
-      </header>
+      </header>\n\n      <ProductionProjectsPanel payload={payload} />
 
       <section className="workspace-grid">
         <div className="workspace-card workspace-intro">
