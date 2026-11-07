@@ -1,7 +1,7 @@
 {
-  "name": "EPHINTA",
-  "short_name": "EPHINTA",
-  "description": "Event planning and management platform",
+  "name": "Dublu Vé",
+  "short_name": "Dublu Vé",
+  "description": "Music and audio services marketplace",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "theme_color": "#f97316",
   "icons": [
     {
-      "src": "/brand/ephinta_logo2.png",
+      "src": "/brand/dublu-ve-mark.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

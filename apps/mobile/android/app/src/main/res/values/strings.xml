@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Ephinta</string>
-    <string name="title_activity_main">EPHINTA</string>
+    <string name="app_name">Dublu Vé</string>
+    <string name="title_activity_main">Dublu Vé</string>
     <string name="package_name">com.ephinta.app</string>
     <string name="custom_url_scheme">com.ephinta.app</string>
 </resources>

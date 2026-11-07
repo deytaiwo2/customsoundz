@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.ephinta.app",
-  appName: "EPHINTA",
+  appName: "Dublu Vé",
   webDir: "../web/dist",
   server: { androidScheme: "https" },
   plugins: {
