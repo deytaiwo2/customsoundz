@@ -812,13 +812,21 @@ paymentsRouter.post(
     } catch (error) {
       const code = typeof error === "object" && error !== null && "code" in error ? error.code : null;
       if (code === "P2002" || code === "P2034") {
-        const existing = await prisma.bookingPaymentRequest.findUnique({ where: { idempotencyKey } });
-        if (existing) {
-          const result = replay(existing);
-          return res.status(200).json({
-            request: { ...result.request, amountMinor: result.request.amountMinor.toString() },
-            alreadyProcessed: true,
-          });
+        // Under SERIALIZABLE isolation, a concurrent replay can lose with a
+        // serialization conflict before the winning transaction becomes visible
+        // to this connection. Briefly retry the unique-key lookup so the caller
+        // receives the original request instead of a false conflict.
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const existing = await prisma.bookingPaymentRequest.findUnique({ where: { idempotencyKey } });
+          if (existing) {
+            const result = replay(existing);
+            return res.status(200).json({
+              request: { ...result.request, amountMinor: result.request.amountMinor.toString() },
+              alreadyProcessed: true,
+            });
+          }
+          if (code === "P2002") break;
+          await new Promise((resolve) => setTimeout(resolve, 20 * (attempt + 1)));
         }
         if (code === "P2034") {
           throw new HttpError(409, "BOOKING_BALANCE_CHANGED", "Another payment request was submitted at the same time. Refresh the booking and try again.");
