@@ -24,6 +24,8 @@ describe.skipIf(!run)("Dublu Vé artist account (DB)", () => {
     expect(registered.body.user.role).toBe("ARTIST");
     const userId = registered.body.user.id as string;
     const token = registered.body.accessToken as string;
+    let buyerId: string | undefined;
+    let bookingId: string | undefined;
 
     try {
       const stored = await prisma.artistProfile.findUniqueOrThrow({ where: { userId } });
@@ -50,10 +52,38 @@ describe.skipIf(!run)("Dublu Vé artist account (DB)", () => {
       expect(listings.status).toBe(200);
       expect(Array.isArray(listings.body.items)).toBe(true);
 
+      const buyer = await request(app).post("/api/v1/auth/register").send({
+        email: `buyer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.dev`,
+        password: "correct-horse-1",
+        name: "Test Buyer",
+        role: "CLIENT",
+      });
+      expect(buyer.status).toBe(201);
+      buyerId = buyer.body.user.id as string;
+      const vendor = await prisma.vendorProfile.findUniqueOrThrow({ where: { userId } });
+      const booking = await prisma.booking.create({
+        data: {
+          buyerId,
+          vendorId: vendor.id,
+          status: "FULFILLED",
+          currency: "NGN",
+          subtotalMinor: 500000n,
+          totalMinor: 500000n,
+          paidMinor: 500000n,
+        },
+      });
+      bookingId = booking.id;
+      await prisma.review.create({
+        data: { bookingId, authorId: buyerId, vendorId: vendor.id, rating: 5, comment: "Verified completed audio project." },
+      });
+
       const directory = await request(app).get("/api/v1/artists");
       expect(directory.status).toBe(200);
-      expect(directory.body.items.some((item: { userId: string }) => item.userId === userId)).toBe(true);
+      const publicArtist = directory.body.items.find((item: { userId: string }) => item.userId === userId);
+      expect(publicArtist).toMatchObject({ averageRating: 5, reviewCount: 1, completedJobs: 1 });
     } finally {
+      if (bookingId) await prisma.booking.delete({ where: { id: bookingId } });
+      if (buyerId) await prisma.user.delete({ where: { id: buyerId } });
       await prisma.user.delete({ where: { id: userId } });
     }
   }, 30_000);

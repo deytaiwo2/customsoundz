@@ -138,6 +138,7 @@ type PublicArtist = {
   bio?: string | null;
   genres: string[];
   averageRating: number;
+  reviewCount: number;
   completedJobs: number;
   city?: string | null;
   country?: string | null;
@@ -1019,7 +1020,7 @@ export default function PublicLanding({
                   <p>{artist.bio || "Creative profile on Dublu Vé."}</p>
                   <p>{artist.genres.join(" · ") || "Audio and creative services"}</p>
                   <p>{[artist.city, artist.country].filter(Boolean).join(", ") || "Location not supplied"}</p>
-                  <small>{artist.verification === "VERIFIED" ? "Verified provider" : "Verification not confirmed"}{artist.averageRating > 0 ? ` · ${artist.averageRating.toFixed(1)} / 5` : ""}{artist.completedJobs > 0 ? ` · ${artist.completedJobs} completed jobs` : ""}</small>
+                  <small>{artist.verification === "VERIFIED" ? "Verified provider" : "Verification not confirmed"}{artist.averageRating > 0 ? ` · ${artist.averageRating.toFixed(1)} / 5 (${artist.reviewCount} reviews)` : ""}{artist.completedJobs > 0 ? ` · ${artist.completedJobs} completed jobs` : ""}</small>
                 </article>
               ))}
             </div>

@@ -93,33 +93,47 @@ export function createApp() {
   // Public artist discovery exposes profile metadata only; sample files remain private.
   app.get("/api/v1/artists", async (_req, res, next) => {
     try {
-      const profiles = await prisma.artistProfile.findMany({
-        where: { user: { status: "ACTIVE" } },
-        orderBy: [{ averageRating: "desc" }, { completedJobs: "desc" }, { createdAt: "desc" }],
-        take: 50,
-        include: {
-          user: {
-            select: {
-              id: true,
-              vendorProfile: { select: { city: true, country: true, verification: true } },
-            },
-          },
-        },
-      });
-      res.json({
-        items: profiles.map((profile) => ({
-          id: profile.id,
-          userId: profile.user.id,
-          displayName: profile.displayName,
-          bio: profile.bio,
-          genres: profile.genres,
-          averageRating: profile.averageRating,
-          completedJobs: profile.completedJobs,
-          city: profile.user.vendorProfile?.city ?? null,
-          country: profile.user.vendorProfile?.country ?? null,
-          verification: profile.user.vendorProfile?.verification ?? "UNVERIFIED",
-        })),
-      });
+      // Rankings are derived from fulfilled bookings and reviews at read time.
+      // The ArtistProfile counters are retained for compatibility, but are not
+      // trusted as a source of public reputation because older rows may be stale.
+      const profiles = await prisma.$queryRaw<Array<{
+        id: string;
+        userId: string;
+        displayName: string;
+        bio: string | null;
+        genres: string[];
+        averageRating: number;
+        reviewCount: number;
+        completedJobs: number;
+        city: string | null;
+        country: string | null;
+        verification: string;
+      }>>`
+        SELECT
+          ap.id,
+          ap."userId",
+          ap."displayName",
+          ap.bio,
+          ap.genres,
+          COALESCE(AVG(r.rating), 0)::float8 AS "averageRating",
+          COUNT(DISTINCT r.id)::int AS "reviewCount",
+          COUNT(DISTINCT b.id)::int AS "completedJobs",
+          vp.city,
+          vp.country,
+          COALESCE(vp.verification::text, 'UNVERIFIED') AS verification
+        FROM "ArtistProfile" ap
+        INNER JOIN "User" u ON u.id = ap."userId"
+        LEFT JOIN "VendorProfile" vp ON vp."userId" = u.id
+        LEFT JOIN "Booking" b
+          ON b."vendorId" = vp.id
+          AND b.status = 'FULFILLED'::"BookingStatus"
+        LEFT JOIN "Review" r ON r."bookingId" = b.id
+        WHERE u.status = 'ACTIVE'::"UserStatus"
+        GROUP BY ap.id, vp.id
+        ORDER BY "averageRating" DESC, "completedJobs" DESC, ap."createdAt" DESC
+        LIMIT 50
+      `;
+      res.json({ items: profiles });
     } catch (error) {
       next(error);
     }
