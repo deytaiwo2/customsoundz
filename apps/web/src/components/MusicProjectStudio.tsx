@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { api, apiUrl, downloadProtectedFile } from "../lib/api";
+import { api, downloadProtectedFile } from "../lib/api";
 
 type ServiceKey = "song" | "jingle" | "voiceover" | "beat" | "mix" | "master" | "studio";
 const SERVICES: { key: ServiceKey; label: string; detail: string; price: number }[] = [
@@ -37,7 +37,7 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
   async function refreshProjects() {
     try { const data = await api<{ items: ProjectRow[] }>("/production-projects"); setProjects(Array.isArray(data.items) ? data.items : []); } catch { /* Customer project history is optional until signed in. */ }
   }
-  useEffect(() => { void refreshProjects(); }, []);
+  useEffect(() => {\n    try { const saved = localStorage.getItem("dubluve:pending-production-project"); if (saved) { const draft = JSON.parse(saved); setTitle(draft.title || "My first Dublu Vé track"); setGenre(draft.genre || "Afrobeats"); setMood(draft.mood || "Uplifting"); setKey(draft.musicalKey || "C major"); setBpm(Number(draft.bpm) || 104); setDuration(draft.duration || "30 seconds"); setBrief(draft.brief || ""); if (Array.isArray(draft.services)) setServices(draft.services.map((item: { key: ServiceKey }) => item.key).filter((key: string) => SERVICES.some(service => service.key === key))); } } catch { /* Ignore an invalid local draft. */ }\n    void refreshProjects();\n    return () => { timers.current.forEach(window.clearTimeout); void audioContext.current?.close(); };\n  }, []);
 
   function toggle(key: ServiceKey) {
     setServices(old => old.includes(key) ? old.filter(x => x !== key) : [...old, key]);
@@ -54,7 +54,7 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
     const scale = genre === "Afrobeats" ? [0, 3, 5, 7, 10] : genre === "Gospel" ? [0, 2, 4, 7, 9] : [0, 2, 3, 7, 10];
     const root = key.startsWith("A") ? 220 : key.startsWith("D") ? 146.83 : key.startsWith("G") ? 196 : 261.63;
     const beat = 60 / bpm;
-    const end = Math.min(24, duration === "15 seconds" ? 15 : duration === "30 seconds" ? 24 : 24);
+    const end = duration === "15 seconds" ? 15 : duration === "30 seconds" ? 30 : 60;
     for (let t = 0; t < end; t += beat) {
       const note = scale[Math.floor((t / beat) % scale.length)];
       const osc = ctx.createOscillator(); const gain = ctx.createGain();
