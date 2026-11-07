@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import MusicProjectStudio from './MusicProjectStudio';
 import { apiUrl } from '../lib/api';
 import { checkPassword, PASSWORD_HELPER, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '../lib/passwordRule';
 import { applyEphintaTheme } from '../lib/ephintaTheme';
@@ -928,6 +929,8 @@ export default function PublicLanding({
           </div>
         </section>
       )}
+
+      <MusicProjectStudio onSignIn={() => openAuth('signin', 'CLIENT')} />
 
       <main id="home">
 
