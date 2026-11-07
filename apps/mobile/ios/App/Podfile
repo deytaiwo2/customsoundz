@@ -23,4 +23,12 @@ end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
+  # Xcode 26's explicit-module scanner currently fails to resolve the local
+  # Capacitor CocoaPods module in this project. Keep Pods on the compatible
+  # implicit-module path until the upstream toolchain issue is resolved.
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+    end
+  end
 end
