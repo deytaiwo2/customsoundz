@@ -513,19 +513,15 @@ export default function PublicLanding({
 
 
   function startPlanning() {
-
-    try { localStorage.setItem('ess:eventDraft', JSON.stringify(draft)); } catch { /* storage may be disabled */ }
-
     setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    if (onStartBuilder) {
-      onStartBuilder();
+    // Dublu Vé starts with a customer account and then the creative-services
+    // marketplace. Event planning remains optional at /plan.
+    if (onOpenAuth) {
+      onOpenAuth('signup', 'CLIENT');
       return;
     }
-
-    window.location.assign('/plan');
-
+    window.location.assign('/auth/signup?role=CLIENT');
   }
 
 
@@ -870,7 +866,7 @@ export default function PublicLanding({
 
              <span className="eph-menu-label">PORTALS & ACCOUNTS</span>
 
-             <button type="button" className="eph-menu-primary" onClick={() => { setMenuOpen(false); startPlanning(); }}>Create your audio brief <span aria-hidden="true">→</span></button>
+             <button type="button" className="eph-menu-primary" onClick={() => { setMenuOpen(false); startPlanning(); }}>Start an audio project <span aria-hidden="true">→</span></button>
 
             <button type="button" onClick={() => { setMenuOpen(false); openAuth('signin'); }}>Sign in to your account</button>
 
@@ -893,7 +889,7 @@ export default function PublicLanding({
 
         <div className="eph-nav-actions">
 
-          <button className="eph-btn eph-btn-gold" onClick={startPlanning}>Plan your next event here <span aria-hidden="true">→</span></button>
+          <button className="eph-btn eph-btn-gold" onClick={startPlanning}>Start an audio project <span aria-hidden="true">→</span></button>
 
           <button ref={menuButtonRef} type="button" className="eph-menu" aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-controls="eph-information-menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
             <span className="eph-menu-bars" aria-hidden="true"><span /><span /><span /></span>
@@ -996,7 +992,7 @@ export default function PublicLanding({
 
   </div>
 
-  <a className="ephinta-marketing-zone__cta" href="/plan">Browse creative services <span aria-hidden="true">→</span></a>
+  <a className="ephinta-marketing-zone__cta" href="#artists">Discover artists and studios <span aria-hidden="true">→</span></a>
 
 </section>
 
@@ -1106,13 +1102,13 @@ export default function PublicLanding({
 
           <div className="eph-faq">
 
-            <details><summary>Can I start planning before creating an account?</summary><p>Yes. You can begin with the planning form. Continuing to the next stage may ask you to create an account so the app can connect your plan to your profile.</p></details>
+            <details><summary>Can I discover artists before creating an account?</summary><p>Yes. You can explore public artist and studio profiles first. Create a customer account when you are ready to save a brief, contact a provider or place an order.</p></details>
 
-            <details><summary>Can I change my event details later?</summary><p>Your current draft is saved in this browser. Make sure to sign in and use the application's planning flow to keep information associated with your account.</p></details>
+            <details><summary>What audio services can I request?</summary><p>You can find creative services such as original songs, brand jingles, voice-overs, mixing, mastering, podcast production and related audio work. Availability depends on the providers currently listed.</p></details>
 
-            <details><summary>How do vendor bookings and payments work?</summary><p>Available payment methods, provider terms and booking protections depend on the features enabled in the application. Review the details shown for each booking before paying.</p></details>
+            <details><summary>How do bookings and payments work?</summary><p>Choose a listed service, review its scope and price, then continue through checkout. Wallet-funded checkout places the booking payment in escrow. Other payment methods are available only when the platform has configured and enabled them. Always review the booking terms before paying.</p></details>
 
-            <details><summary>How do I join as a vendor or organization?</summary><p>Choose the relevant account type above, then complete the registration form. Additional business information may be required.</p></details>
+            <details><summary>How can I offer my creative services?</summary><p>Create an artist or vendor account, complete your profile and verification steps, then publish your service listings for review. Only approved, active listings are available for customers to book.</p></details>
 
           </div>
 
@@ -1126,7 +1122,7 @@ export default function PublicLanding({
 
         <a className="eph-brand" href="#home"><span>Dublu Vé</span></a>
 
-        <small>Plan thoughtfully. Celebrate fully.</small>
+        <small>Your sound. Your story. Made together.</small>
 
         <div className="eph-footer-links"><a href="#how-it-works">How it works</a><a href="#vendors">Vendors</a><a href="#safety">Safety</a><a href="#faq">FAQ</a></div>
 

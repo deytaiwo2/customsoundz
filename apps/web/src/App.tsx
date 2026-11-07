@@ -645,7 +645,6 @@ export default function App() {
             : `/auth/${mode}?role=${encodeURIComponent(role)}`;
           window.location.assign(path);
         }}
-        onStartBuilder={() => window.location.assign("/plan")}
       />
     </SplashLogo>
   );
