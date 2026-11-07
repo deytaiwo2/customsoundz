@@ -219,6 +219,7 @@ model User {
   vendorReplies VendorEnquiry[] @relation("EnquiryResponder")
   pushDevices PushDevice[]
   pushPreference PushPreference?
+  productionProjects ProductionProject[]
 }
 
 model RefreshToken {
@@ -267,6 +268,35 @@ model VendorProfile {
   promotions Promotion[]
   reviews    Review[]
   checkoutItems CheckoutItem[]
+}
+
+model ProductionProject {
+  id                    String   @id @default(uuid())
+  reference             String   @unique
+  customerId            String
+  title                 String
+  genre                 String
+  mood                  String
+  musicalKey            String
+  bpm                   Int
+  duration              String
+  brief                 String?
+  services              Json
+  estimatedTotalMinor   BigInt
+  currency              String   @default("NGN")
+  status                String   @default("SUBMITTED")
+  assignedTeam          String   @default("DUBLU_VE_PRODUCTION")
+  deliveryStorageRef    String?
+  deliveryFileName      String?
+  deliveryMimeType      String?
+  deliverySizeBytes     BigInt?
+  readyAt               DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  customer              User     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
 }
 
 model ArtistProfile {
