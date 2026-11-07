@@ -70,7 +70,7 @@ jobs:
             find apps/mobile/ios -maxdepth 6 -name '*.xcworkspace' -print
             exit 1
           fi
-          if [[ ! -d "apps/mobile/ios/Pods/Pods.xcodeproj" ]]; then
+          if [[ ! -d "apps/mobile/ios/App/Pods/Pods.xcodeproj" ]]; then
             echo "CocoaPods project missing after Capacitor sync."
             exit 1
           fi
