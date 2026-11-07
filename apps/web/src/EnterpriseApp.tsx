@@ -762,7 +762,7 @@ function VendorPortal({
   const [notice, setNotice] = useState("");
   const [form, setForm] = useState({
     name: "",
-    category: "Catering",
+    category: isArtist ? "Original Songs & Custom Music" : "Catering",
     price: "",
     currency: "NGN",
     status: "Draft" as "Live" | "Draft",
@@ -821,7 +821,7 @@ function VendorPortal({
           }
         : {
             name: "",
-            category: "Catering",
+            category: isArtist ? "Original Songs & Custom Music" : "Catering",
             price: "",
             currency: "NGN",
             status: "Draft",
