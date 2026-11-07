@@ -9,8 +9,9 @@ type PortalCase = {
 
 const portals: PortalCase[] = [
   { role: "CLIENT", email: "qa-client@example.com", heading: /Welcome back, QA\./ },
+  { role: "ARTIST", email: "qa-artist@example.com", heading: /Make your sound bookable\./ },
   { role: "ORGANIZATION", email: "qa-org-planning@example.com", organizationMode: "EVENT_PLANNING", heading: /Welcome back, QA\./ },
-  { role: "ORGANIZATION", email: "qa-org-provider@example.com", organizationMode: "SERVICE_PROVIDER", heading: /Sell the experience\./ },
+  { role: "ORGANIZATION", email: "qa-org-provider@example.com", organizationMode: "SERVICE_PROVIDER", heading: /Grow your creative services\./ },
   { role: "VENDOR", email: "qa-vendor@example.com", heading: /Sell the experience\./ },
   { role: "AFFILIATE", email: "qa-affiliate@example.com", heading: /Grow the event network\./ },
   { role: "VERIFIER", email: "qa-verifier@example.com", heading: /Pre-event service confirmation/ },
@@ -18,8 +19,12 @@ const portals: PortalCase[] = [
   { role: "ADMIN", email: "qa-admin@example.com", heading: /Platform operations/ },
 ];
 
-async function installRoleApiFixtures(page: Page, portal: PortalCase) {
-  await page.addInitScript(() => localStorage.setItem("ess_onboard_v1", "1"));
+async function installRoleApiFixtures(page: Page, portal: PortalCase, options: { firstRun?: boolean } = {}) {
+  const onboardingKey = `ess_onboard_v2_${portal.role.toLowerCase()}_${portal.organizationMode ?? "default"}`;
+  await page.addInitScript(({ key, completed }) => {
+    if (completed) localStorage.setItem(key, "1");
+    else localStorage.removeItem(key);
+  }, { key: onboardingKey, completed: !options.firstRun });
   await page.route("**/api/v1/**", async (route: Route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -45,6 +50,7 @@ async function installRoleApiFixtures(page: Page, portal: PortalCase) {
         expiresIn: 900,
       });
     }
+    if (path.endsWith("/artist/profile")) return json({ profile: { displayName: "QA Artist", bio: "Test artist profile", genres: ["Original songs"] } });
     if (path.endsWith("/vendor/categories")) return json({ items: [{ id: "cat-catering", name: "Catering" }] });
     if (path.endsWith("/vendor/listings") && request.method() === "POST") {
       const body = request.postDataJSON() as Record<string, unknown>;
@@ -113,6 +119,13 @@ for (const portal of portals) {
     if (portal.role === "CLIENT" || (portal.role === "ORGANIZATION" && portal.organizationMode === "EVENT_PLANNING")) {
       await page.getByRole("button", { name: /New event/ }).click();
       await expect(page.getByRole("heading", { name: "Create event", exact: true })).toBeVisible();
+    } else if (portal.role === "ARTIST") {
+      await page.getByRole("button", { name: "Artist profile" }).click();
+      await expect(page.getByRole("heading", { name: "Your artist profile" })).toBeVisible();
+      await page.getByLabel("Artist or studio name").fill("QA Artist Studio");
+      await page.getByRole("button", { name: "Save artist profile" }).click();
+      await expect(page.getByText("Artist profile saved.")).toBeVisible();
+      await page.getByRole("button", { name: "Services & demand" }).click();
     } else if (portal.role === "VENDOR" || (portal.role === "ORGANIZATION" && portal.organizationMode === "SERVICE_PROVIDER")) {
       await page.getByRole("button", { name: "Add your first listing" }).click();
       await expect(page.getByRole("heading", { name: "Add service package" })).toBeVisible();
@@ -144,6 +157,39 @@ for (const portal of portals) {
   });
 }
 
+
+test("new artist accounts see artist-specific onboarding before their workspace", async ({ page }) => {
+  const artist = portals.find((portal) => portal.role === "ARTIST")!;
+  await installRoleApiFixtures(page, artist, { firstRun: true });
+  await page.goto("/auth/signin?role=ARTIST");
+  await page.getByLabel("Email").fill(artist.email);
+  await page.getByRole("textbox", { name: "Password" }).fill("QaOnlyPassword123!");
+  const loginRequest = page.waitForRequest((request) => request.method() === "POST" && request.url().includes("/auth/login"), { timeout: 15_000 });
+  await page.getByRole("textbox", { name: "Password" }).press("Enter");
+  await loginRequest;
+  const onboarding = page.getByRole("dialog", { name: "artist onboarding" });
+  await expect(onboarding).toBeVisible();
+  await expect(onboarding.getByRole("heading", { name: "Introduce your creative identity" })).toBeVisible();
+  await onboarding.getByRole("button", { name: "Skip intro" }).click();
+  await expect(page.getByRole("heading", { name: artist.heading }).first()).toBeVisible();
+});
+
+test("new vendor accounts see vendor-specific onboarding before their workspace", async ({ page }) => {
+  const vendor = portals.find((portal) => portal.role === "VENDOR")!;
+  await installRoleApiFixtures(page, vendor, { firstRun: true });
+  await page.goto("/auth/signin?role=VENDOR");
+  await page.getByLabel("Email").fill(vendor.email);
+  await page.getByRole("textbox", { name: "Password" }).fill("QaOnlyPassword123!");
+  const loginRequest = page.waitForRequest((request) => request.method() === "POST" && request.url().includes("/auth/login"), { timeout: 15_000 });
+  await page.getByRole("textbox", { name: "Password" }).press("Enter");
+  await loginRequest;
+
+  const onboarding = page.getByRole("dialog", { name: "vendor onboarding" });
+  await expect(onboarding).toBeVisible();
+  await expect(onboarding.getByRole("heading", { name: "Complete your business profile" })).toBeVisible();
+  await onboarding.getByRole("button", { name: "Skip intro" }).click();
+  await expect(page.getByRole("heading", { name: vendor.heading }).first()).toBeVisible();
+});
 
 test("CLIENT and VENDOR workspaces remain usable on a phone viewport @mobile", async ({ page }) => {
   const client = portals.find((portal) => portal.role === "CLIENT")!;
