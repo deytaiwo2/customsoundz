@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { apiUrl } from "../lib/api";
+import { api, apiUrl, downloadProtectedFile } from "../lib/api";
 
 type ServiceKey = "song" | "jingle" | "voiceover" | "beat" | "mix" | "master" | "studio";
 const SERVICES: { key: ServiceKey; label: string; detail: string; price: number }[] = [
@@ -35,7 +35,7 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
   const selected = SERVICES.filter(s => services.includes(s.key));
 
   async function refreshProjects() {
-    try { const response = await fetch(apiUrl("/production-projects"), { credentials: "include" }); if (response.ok) { const data = await response.json(); setProjects(Array.isArray(data.items) ? data.items : []); } } catch { /* Customer project history is optional until signed in. */ }
+    try { const data = await api<{ items: ProjectRow[] }>("/production-projects"); setProjects(Array.isArray(data.items) ? data.items : []); } catch { /* Customer project history is optional until signed in. */ }
   }
   useEffect(() => { void refreshProjects(); }, []);
 
@@ -75,10 +75,14 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
     const project = { title: title.trim(), genre, mood, musicalKey: key, bpm, duration, brief: brief.trim(), services: selected.map(s => ({ key: s.key, label: s.label, unitPriceMinor: s.price * 100 })), estimatedTotalMinor: total * 100, currency: "NGN" };
     try {
       localStorage.setItem("dubluve:pending-production-project", JSON.stringify(project));
-      const response = await fetch(apiUrl("/production-projects"), { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(project) });
-      const data = await response.json().catch(() => ({}));
-      if (response.status === 401) { setNotice("Your project brief is saved on this device. Sign in or create a customer account, then return here to assign it to our production team."); onSignIn(); return; }
-      if (!response.ok) throw new Error(data?.error?.message || "We could not assign this project. Please try again.");
+      let data: { project: { reference: string; status: string } };
+      try { data = await api<{ project: { reference: string; status: string } }>("/production-projects", { method: "POST", body: JSON.stringify(project) }); }
+      catch (requestError) {
+        if (requestError instanceof Error && /Missing bearer token|Invalid or expired token/i.test(requestError.message)) {
+          setNotice("Your project brief is saved on this device. Sign in or create a customer account, then return here to assign it to our production team."); onSignIn(); return;
+        }
+        throw requestError;
+      }
       localStorage.removeItem("dubluve:pending-production-project");
       setNotice(`Project request ${data.project?.reference || ""} has been sent to Dublu Vé Production. Our team will review the brief and confirm the final quote before production begins.`);
     } catch (e) { setError(e instanceof Error ? e.message : "Project submission failed."); }
@@ -123,7 +127,7 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
           {selected.map(s=><div className="dv-studio-line" key={s.key}><span>{s.label}</span><strong>{money(s.price)}</strong></div>)}
           <button type="button" className="dv-studio-btn" style={{width:"100%",marginTop:16}} disabled={sending || !services.length} onClick={()=>void assignProject()}>{sending ? "Sending project…" : "Assign project to Dublu Vé Production →"}</button>
           {notice && <div className="dv-studio-notice" role="status">{notice}</div>}{error && <div className="dv-studio-error" role="alert">{error}</div>}
-          {projects.length > 0 && <div style={{marginTop:22,borderTop:"1px solid #ffffff2b",paddingTop:16}}><h3>Your production projects</h3>{projects.map(project=><div key={project.id} className="dv-studio-line" style={{alignItems:"center"}}><span><strong>{project.title}</strong><br/><span className="dv-studio-muted">{project.reference} · {project.status.replace("_"," ")}</span></span>{project.status === "READY" ? <a className="dv-studio-btn" href={apiUrl(`/production-projects/${project.id}/download`)} style={{textDecoration:"none",fontSize:12}}>Download</a> : <span className="dv-studio-muted">In progress</span>}</div>)}</div>}
+          {projects.length > 0 && <div style={{marginTop:22,borderTop:"1px solid #ffffff2b",paddingTop:16}}><h3>Your production projects</h3>{projects.map(project=><div key={project.id} className="dv-studio-line" style={{alignItems:"center"}}><span><strong>{project.title}</strong><br/><span className="dv-studio-muted">{project.reference} · {project.status.replace("_"," ")}</span></span>{project.status === "READY" ? <button type="button" className="dv-studio-btn" onClick={()=>void downloadProtectedFile(`/production-projects/${project.id}/download`, project.deliveryFileName || `${project.reference}-final-audio`).catch(e=>setError(e instanceof Error ? e.message : "Download failed."))} style={{fontSize:12}}>Download</button> : <span className="dv-studio-muted">In progress</span>}</div>)}</div>}
           </div>
         </aside>
       </div>
