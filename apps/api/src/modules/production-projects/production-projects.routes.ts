@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { Router } from "express";
+import { Router, raw } from "express";
 import { prisma } from "../../lib/prisma";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import { asyncHandler } from "../../lib/async";
 import { createNotification } from "../notifications/notifications.service";
-import { readAudioDelivery, storeAudioDelivery, AUDIO_CONTENT_TYPES } from "../../lib/audio-delivery-storage";
+import { readAudioDelivery, storeAudioDelivery } from "../../lib/audio-delivery-storage";
 
 export const productionProjectsRouter = Router();
 const priceNaira: Record<string, number> = {
@@ -79,7 +79,7 @@ productionProjectsRouter.patch("/:projectId/status", requireRole("ADMIN"), async
   res.json({ project: { id: project.id, reference: project.reference, status: project.status } });
 }));
 
-productionProjectsRouter.put("/:projectId/deliverable", requireRole("ADMIN"), asyncHandler(async (req, res) => {
+productionProjectsRouter.put("/:projectId/deliverable", raw({ type: "audio/*", limit: "25mb" }), requireRole("ADMIN"), asyncHandler(async (req, res) => {
   const { projectId } = req.params;
   if (!uuidPattern.test(projectId)) return res.status(400).json({ error: { code: "INVALID_PROJECT_ID", message: "Project ID is invalid." } });
   const project = await prisma.productionProject.findUnique({ where: { id: projectId } });
