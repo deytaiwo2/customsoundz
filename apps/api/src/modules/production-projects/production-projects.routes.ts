@@ -30,13 +30,13 @@ productionProjectsRouter.post("/", asyncHandler(async (req, res) => {
   const yuletideSongs = Number(body.yuletideSongs);
   const storytelling = body.storytelling === true;
   const yuletideUnitPrice = yuletideSongs === 1 ? 30000 : yuletideSongs === 2 ? 25000 : yuletideSongs === 3 ? 20000 : 0;
-  const yuletideOfferActive = new Date() <= new Date("2026-12-31T23:59:59.999Z");
+  const yuletideOfferActive = new Date() <= new Date("2026-12-31T23:59:59.999+01:00");
   const brief = typeof body.brief === "string" ? body.brief.trim() : "";
   const bpm = Number(body.bpm);
   const keys: string[] = Array.isArray(body.services) ? Array.from(new Set<string>(body.services.map((item: unknown) => item && typeof item === "object" && "key" in item && typeof item.key === "string" ? item.key : ""))) : [];
   if (title.length < 2 || title.length > 100 || !genre || genre.length > 60 || !mood || mood.length > 60 ||
       !musicalKey || musicalKey.length > 30 || !Number.isInteger(bpm) || bpm < 60 || bpm > 200 ||
-      (!isYuletide && !["15 seconds", "30 seconds", "60 seconds"].includes(duration)) || (isYuletide && (duration !== "Up to 2 minutes 30 seconds" || !yuletideOfferActive || ![1, 2, 3].includes(yuletideSongs))) || brief.length > 1500 ||
+      (!isYuletide && !["15 seconds", "30 seconds", "60 seconds"].includes(duration)) || (isYuletide && (duration !== "Up to 2 minutes 30 seconds" || !yuletideOfferActive || ![1, 2, 3].includes(yuletideSongs))) || brief.length > (isYuletide ? 1800 : 1500) ||
       (isYuletide ? keys.length !== 1 || keys[0] !== "yuletide" : !keys.length || keys.length > Object.keys(priceNaira).length || keys.some((key: string) => !priceNaira[key]))) {
     return res.status(400).json({ error: { code: "INVALID_PROJECT_BRIEF", message: "Complete the project details and choose a valid production package. The Yuletide offer is available through 31 December 2026." } });
   }
