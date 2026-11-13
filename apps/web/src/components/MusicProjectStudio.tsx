@@ -57,27 +57,141 @@ export default function MusicProjectStudio({ onSignIn }: { onSignIn: () => void 
 
   async function preview() {
     if (playing) {
-      timers.current.forEach(window.clearTimeout); timers.current = [];
-      void audioContext.current?.close(); audioContext.current = null; setPlaying(false); return;
+      timers.current.forEach(window.clearTimeout);
+      timers.current = [];
+      void audioContext.current?.close();
+      audioContext.current = null;
+      setPlaying(false);
+      return;
     }
+
     const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) { setError("This browser does not support audio preview. Try a current Chrome, Edge or Safari browser."); return; }
-    const ctx = new Ctx(); audioContext.current = ctx; await ctx.resume(); setPlaying(true); setError("");
-    const scale = genre === "Afrobeats" ? [0, 3, 5, 7, 10] : genre === "Gospel" ? [0, 2, 4, 7, 9] : [0, 2, 3, 7, 10];
-    const root = key.startsWith("A") ? 220 : key.startsWith("D") ? 146.83 : key.startsWith("G") ? 196 : 261.63;
-    const beat = 60 / bpm;
-    const end = duration === "15 seconds" ? 15 : duration === "30 seconds" ? 30 : 60;
-    for (let t = 0; t < end; t += beat) {
-      const note = scale[Math.floor((t / beat) % scale.length)];
-      const osc = ctx.createOscillator(); const gain = ctx.createGain();
-      osc.type = "triangle"; osc.frequency.value = root * Math.pow(2, note / 12);
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t);
-      gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + t + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + beat * 0.7);
-      osc.connect(gain); gain.connect(ctx.destination); osc.start(ctx.currentTime + t); osc.stop(ctx.currentTime + t + beat * 0.72);
-      const kick = ctx.createOscillator(); const kg = ctx.createGain(); kick.type = "sine"; kick.frequency.setValueAtTime(90, ctx.currentTime + t); kick.frequency.exponentialRampToValueAtTime(38, ctx.currentTime + t + 0.12); kg.gain.setValueAtTime(0.12, ctx.currentTime + t); kg.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.13); kick.connect(kg); kg.connect(ctx.destination); kick.start(ctx.currentTime + t); kick.stop(ctx.currentTime + t + 0.14);
+    if (!Ctx) {
+      setError("This browser does not support audio preview. Try a current Chrome, Edge or Safari browser.");
+      return;
     }
-    timers.current.push(window.setTimeout(() => { void ctx.close(); audioContext.current = null; setPlaying(false); }, end * 1000 + 250));
+
+    const ctx = new Ctx();
+    audioContext.current = ctx;
+    await ctx.resume();
+    setPlaying(true);
+    setError("");
+
+    // This is a locally generated musical sketch: a chord bed, bass line,
+    // rhythm section and short melodic phrase. It is not a finished recording.
+    const rootNames: Record<string, number> = {
+      C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4,
+      F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8,
+      A: 9, "A#": 10, Bb: 10, B: 11,
+    };
+    const rootName = key.split(" ")[0];
+    const rootMidi = 60 + (rootNames[rootName] ?? 0);
+    const isMinor = key.toLowerCase().includes("minor");
+    const scale = isMinor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+    const bpmSafe = Math.max(60, Math.min(200, bpm));
+    const beat = 60 / bpmSafe;
+    const seconds = duration === "15 seconds" ? 15 : duration === "30 seconds" ? 30 : 60;
+    const barDuration = beat * 4;
+    const bars = Math.ceil(seconds / barDuration);
+    const progression = mood === "Romantic" ? [0, 5, 3, 4]
+      : mood === "Reflective" ? [0, 5, 1, 4]
+      : mood === "Emotional" ? [5, 3, 0, 4]
+      : mood === "Corporate" ? [0, 3, 4, 0]
+      : [0, 3, 4, 0];
+    const isDance = genre === "Afrobeats" || genre === "Amapiano";
+    const isSoft = mood === "Romantic" || mood === "Reflective";
+    const startAt = ctx.currentTime + 0.08;
+
+    const frequency = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+    const tone = (midi: number, at: number, length: number, wave: OscillatorType, volume: number, pan = 0) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const panner = ctx.createStereoPanner();
+      osc.type = wave;
+      osc.frequency.setValueAtTime(frequency(midi), at);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume), at + 0.018);
+      gain.gain.setValueAtTime(Math.max(0.0002, volume), Math.max(at + 0.02, at + length * 0.65));
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + length);
+      panner.pan.setValueAtTime(pan, at);
+      osc.connect(gain);
+      gain.connect(panner);
+      panner.connect(ctx.destination);
+      osc.start(at);
+      osc.stop(at + length + 0.02);
+    };
+
+    const kick = (at: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(125, at);
+      osc.frequency.exponentialRampToValueAtTime(42, at + 0.13);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(isSoft ? 0.10 : 0.19, at + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(at);
+      osc.stop(at + 0.2);
+    };
+
+    const noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.22), ctx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i += 1) noiseData[i] = (Math.random() * 2 - 1) * (1 - i / noiseData.length);
+    const noiseHit = (at: number, length: number, volume: number, highpass: number) => {
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+      source.buffer = noiseBuffer;
+      filter.type = "highpass";
+      filter.frequency.setValueAtTime(highpass, at);
+      gain.gain.setValueAtTime(Math.max(0.0001, volume), at);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + length);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      source.start(at);
+      source.stop(at + length);
+    };
+
+    for (let bar = 0; bar < bars; bar += 1) {
+      const barAt = startAt + bar * barDuration;
+      const degree = progression[bar % progression.length];
+      const chordDegrees = [degree, (degree + 2) % 7, (degree + 4) % 7];
+      chordDegrees.forEach((chordDegree, index) => {
+        const octave = chordDegree < degree ? 12 : 0;
+        tone(rootMidi + scale[chordDegree] + octave, barAt, barDuration * 0.92, "triangle", isSoft ? 0.018 : 0.024, (index - 1) * 0.35);
+      });
+
+      for (let beatIndex = 0; beatIndex < 4; beatIndex += 1) {
+        const at = barAt + beatIndex * beat;
+        const bassDegree = degree === 5 ? 5 : degree;
+        tone(rootMidi - 12 + scale[bassDegree], at, beat * 0.72, "sine", 0.11, -0.12);
+        if (beatIndex === 0 || (isDance && beatIndex === 2)) kick(at);
+        if (beatIndex === 1 || beatIndex === 3) noiseHit(at, 0.13, isSoft ? 0.025 : 0.055, 900);
+      }
+
+      // Light off-beat percussion gives the preview a recognisable groove.
+      for (let eighth = 0; eighth < 8; eighth += 1) {
+        const at = barAt + eighth * beat / 2;
+        if (isDance || eighth % 2 === 1) noiseHit(at, 0.035, isDance ? 0.018 : 0.009, 6500);
+      }
+
+      const motif = [0, 2, 4, 2, 3, 2, 1, 2];
+      motif.forEach((note, index) => {
+        const at = barAt + index * beat / 2 + beat * 0.04;
+        const degreeIndex = (degree + note) % 7;
+        const octave = index === 2 || index === 6 ? 24 : 12;
+        tone(rootMidi + scale[degreeIndex] + octave, at, beat * 0.22, genre === "Gospel" ? "sine" : "triangle", isSoft ? 0.025 : 0.035, index % 2 ? 0.22 : -0.22);
+      });
+    }
+
+    timers.current.push(window.setTimeout(() => {
+      void ctx.close();
+      if (audioContext.current === ctx) audioContext.current = null;
+      setPlaying(false);
+    }, seconds * 1000 + 350));
   }
 
   async function assignProject() {
