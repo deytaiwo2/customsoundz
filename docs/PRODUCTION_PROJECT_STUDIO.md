@@ -3,7 +3,7 @@
 ## Customer journey
 
 1. Open the public landing page and scroll to **Build a sample. Price your production.**
-2. Select style, mood, key, tempo and sample duration. The browser synthesizer creates a short illustrative sketch locally; it does not claim to generate a finished AI song.
+2. Select style, mood, key, tempo and preview duration. The browser synthesizer creates a locally generated musical sketch with a chord bed, bass line, rhythm/percussion and a short melodic phrase. It is an idea preview only; it does not claim to generate a finished AI song, studio recording or master.
 3. Select one or more production services. The page displays an itemised NGN estimate from the server-matched launch price menu. For the Yuletide campaign, select 1, 2 or 3 songs, enter the recipient name and occasion, and optionally add a dedication and a personal story. Storytelling is required only when the optional storytelling format is selected; that version is scoped to a maximum of 2 minutes 30 seconds.
 4. Sign in or create a customer account and submit the project. The API recalculates the estimate on the server; browser-submitted prices are never trusted.
 5. The project is assigned to the Dublu Vé Production queue and administrators receive an in-app notification.
