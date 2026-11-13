@@ -290,64 +290,40 @@ export default function PublicLanding({
 
   useEffect(() => {
     if (promotions.length <= 1) return;
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion || isPromotionHovered || isPromotionFocused || document.hidden) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const timer = window.setInterval(() => {
-      setActivePromotionIndex((current) => (current + 1) % promotions.length);
-    }, 8000);
+    let timer: number | undefined;
+    const stopRotation = () => {
+      if (timer !== undefined) window.clearInterval(timer);
+      timer = undefined;
+    };
+    const startRotation = () => {
+      stopRotation();
+      if (document.hidden || isPromotionHovered || isPromotionFocused) return;
+      timer = window.setInterval(() => {
+        setActivePromotionIndex((current) => (current + 1) % promotions.length);
+      }, 8000);
+    };
+    const handleVisibilityChange = () => {
+      if (document.hidden) stopRotation();
+      else startRotation();
+    };
 
-    return () => window.clearInterval(timer);
-  }, [promotions, isPromotionHovered, isPromotionFocused]);
-
-
+    startRotation();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      stopRotation();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [promotions.length, isPromotionHovered, isPromotionFocused]);
 
   useEffect(() => {
     if (!promotions.length) return;
     setActivePromotionIndex((current) => Math.min(current, promotions.length - 1));
   }, [promotions.length]);
 
-
-
-  useEffect(() => {
-    if (!promotions.length) return;
-    const onVisibilityChange = () => {
-      if (document.hidden) {
-        setIsPromotionHovered(false);
-        setIsPromotionFocused(false);
-      }
-    };
-
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, [promotions.length]);
-
-
-
-  useEffect(() => {
-    if (!promotions.length) return;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion) return;
-    const handleVisibility = () => {
-      if (document.hidden) setIsPromotionHovered(true);
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [promotions.length]);
-
-
-
   useEffect(() => {
     try { localStorage.setItem('ess:eventDraft', JSON.stringify(draft)); } catch { /* storage may be disabled */ }
-
-  }, [draft]);
-
-
-
-  useEffect(() => {
-
-    try { localStorage.setItem('ess:eventDraft', JSON.stringify(draft)); } catch { /* storage may be disabled */ }
-
   }, [draft]);
 
   useEffect(() => {
