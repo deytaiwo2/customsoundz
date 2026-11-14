@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: dublu-ve-api-k070
+    name: dublu-ve-api
     runtime: node
     plan: free
     region: oregon
@@ -9,13 +9,13 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm run db:deploy && npm start
     healthCheckPath: /ready
-    autoDeployTrigger: off
+    autoDeployTrigger: checksPass
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: dublu-ve-demo-postgres
+          name: dublu-ve-postgres
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
@@ -31,7 +31,7 @@ services:
         value: NGN
 
   - type: web
-    name: dublu-ve-web-k070
+    name: dublu-ve-web
     runtime: static
     branch: feature/dublu-ve-integrated-marketplace
     rootDir: .
@@ -42,7 +42,7 @@ services:
         value: https://dublu-ve-api-k070.onrender.com/api/v1
 
 databases:
-  - name: dublu-ve-demo-postgres
+  - name: dublu-ve-postgres
     databaseName: dublu_ve_demo
     user: dublu_ve_demo_user
     plan: free
