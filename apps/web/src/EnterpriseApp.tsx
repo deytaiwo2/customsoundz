@@ -33,6 +33,7 @@ import "./public-landing.css";
 const PublicLanding = lazy(() => import("./components/PublicLanding"));
 const WalletPanel = lazy(() => import("./components/WalletPanel"));
 const PlatformRevenuePanel = lazy(() => import("./components/PlatformRevenuePanel"));
+const DubluVePaymentModePanel = lazy(() => import("./components/DubluVePaymentModePanel"));
 const VendorPaymentRequestsPanel = lazy(() => import("./components/VendorPaymentRequestsPanel"));
 const PromotionsPanel = lazy(() => import("./components/PromotionsPanel"));
 const MarketplaceBrowse = lazy(() => import("./components/MarketplaceBrowse"));
@@ -1813,6 +1814,7 @@ function AdminPortal() {
       )}
       <FinanceOperationsPanel />
       <PlatformRevenuePanel />
+      <DubluVePaymentModePanel />
       <AdminDisputesPanel />
       <AdminControlsPanel />
       <PromotionsPanel mode="admin" />
