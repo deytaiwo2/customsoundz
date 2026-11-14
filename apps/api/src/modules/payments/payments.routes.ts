@@ -18,6 +18,7 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { asyncHandler } from "../../lib/async";
 import { HttpError } from "../../lib/errors";
 import { commissionMinor } from "../../lib/money";
+import { recordPlatformRevenue } from "./platformRevenue.service";
 import { env } from "../../config/env";
 import {
   initializeFlutterwave,
@@ -391,6 +392,13 @@ async function applySuccessfulPayment(intentId: string, providerRef: string): Pr
             refId: intentId,
             idempotencyKey: `pay_deposit_fee:${intentId}`,
           },
+        });
+        await recordPlatformRevenue(tx, {
+          amountMinor: feeMinor,
+          currency: intent.currency,
+          refType: "PAYMENT_INTENT",
+          refId: intentId,
+          idempotencyKey: `platform_wallet_topup_fee:${intentId}`,
         });
       }
     }
