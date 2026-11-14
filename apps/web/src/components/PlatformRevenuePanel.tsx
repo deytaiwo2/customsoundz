@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { formatMoney } from "../lib/i18n";
+import { formatMoney, type CurrencyCode } from "../lib/i18n";
 
 type RevenueAccount = { currency: string; balanceMinor: string };
 type RevenueEntry = {
@@ -56,7 +56,7 @@ export default function PlatformRevenuePanel() {
             {data.accounts.length ? data.accounts.map((account) => (
               <article className="ess-wallet-card" key={account.currency}>
                 <span className="ess-muted">Recorded platform fees · {account.currency}</span>
-                <strong style={{ display: "block", fontSize: 22, marginTop: 8 }}>{formatMoney(account.balanceMinor, account.currency as "NGN", "en")}</strong>
+                <strong style={{ display: "block", fontSize: 22, marginTop: 8 }}>{formatMoney(account.balanceMinor, account.currency as CurrencyCode, "en")}</strong>
               </article>
             )) : <p className="ess-muted">No platform fee entries have been recorded yet.</p>}
           </div>
@@ -70,7 +70,7 @@ export default function PlatformRevenuePanel() {
                     <td>{new Date(entry.createdAt).toLocaleString()}</td>
                     <td>{(entry.refType || "Fee").replace(/_/g, " ")}</td>
                     <td>{entry.refId || "—"}</td>
-                    <td>{formatMoney(entry.amountMinor, entry.currency as "NGN", "en")}</td>
+                    <td>{formatMoney(entry.amountMinor, entry.currency as CurrencyCode, "en")}</td>
                     <td>{formatMoney(entry.balanceAfterMinor, entry.currency as "NGN", "en")}</td>
                   </tr>
                 ))}</tbody>
