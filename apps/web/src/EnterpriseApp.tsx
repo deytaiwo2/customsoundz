@@ -1,4 +1,4 @@
-import { lazy, useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import DateWheelPicker from './components/DateWheelPicker';
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { APP_ROUTE_PATHS, dashboardRouteRedirect, legacyDashboardPath } from "./lib/appRoutes";
@@ -1813,8 +1813,12 @@ function AdminPortal() {
         </>
       )}
       <FinanceOperationsPanel />
-      <PlatformRevenuePanel />
-      <DubluVePaymentModePanel />
+      <Suspense fallback={<p className="ess-muted">Loading platform revenue journal…</p>}>
+        <PlatformRevenuePanel />
+      </Suspense>
+      <Suspense fallback={null}>
+        <DubluVePaymentModePanel />
+      </Suspense>
       <AdminDisputesPanel />
       <AdminControlsPanel />
       <PromotionsPanel mode="admin" />
