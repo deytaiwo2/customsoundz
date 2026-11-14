@@ -9,6 +9,82 @@ export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole("ADMIN"));
 
 
+const paymentModes = ["demo", "test", "live"] as const;
+
+/** Read the shared payment mode and non-secret provider readiness flags. */
+adminRouter.get("/runtime/payment-mode", asyncHandler(async (_req, res) => {
+  let setting = await prisma.platformRuntimeSetting.findUnique({ where: { id: "global" } });
+  if (!setting) {
+    setting = await prisma.platformRuntimeSetting.create({ data: { id: "global", paymentMode: "demo" } });
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    paymentMode: setting.paymentMode,
+    updatedAt: setting.updatedAt,
+    testAllowed: process.env.NODE_ENV !== "production" || process.env.ALLOW_PRODUCTION_TEST_MODE === "true",
+    liveReady: Boolean(
+      process.env.PAYSTACK_SECRET_KEY?.startsWith("sk_live_") ||
+      process.env.FLUTTERWAVE_SECRET_KEY?.startsWith("FLWSECK-")
+    ),
+  });
+}));
+
+adminRouter.patch("/runtime/payment-mode", asyncHandler(async (req, res) => {
+  const requested = typeof req.body.paymentMode === "string" ? req.body.paymentMode.toLowerCase() : "";
+  if (!paymentModes.includes(requested as typeof paymentModes[number])) {
+    return res.status(400).json({ error: { code: "INVALID_PAYMENT_MODE", message: "Choose DEMO, TEST, or LIVE." } });
+  }
+  const paymentMode = requested as typeof paymentModes[number];
+  if (paymentMode === "test" && process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_TEST_MODE !== "true") {
+    return res.status(409).json({ error: { code: "PRODUCTION_TEST_MODE_DISABLED", message: "TEST mode is locked on this production deployment." } });
+  }
+  if (paymentMode === "live") {
+    const liveProviderReady =
+      Boolean(process.env.PAYSTACK_SECRET_KEY?.startsWith("sk_live_")) ||
+      Boolean(process.env.FLUTTERWAVE_SECRET_KEY?.startsWith("FLWSECK-"));
+    if (!liveProviderReady) {
+      return res.status(409).json({ error: { code: "LIVE_MODE_NOT_READY", message: "LIVE mode is locked until a supported live payment provider credential is configured." } });
+    }
+    if (req.body.confirmation !== "LIVE") {
+      return res.status(400).json({ error: { code: "LIVE_CONFIRMATION_REQUIRED", message: "Type LIVE to confirm a real-money payment mode change." } });
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "PlatformRuntimeSetting" WHERE "id" = 'global' FOR UPDATE`;
+    const previous = await tx.platformRuntimeSetting.findUnique({ where: { id: "global" } });
+    if ((previous?.paymentMode ?? "demo") !== paymentMode) {
+      const pendingPayments = await tx.paymentIntent.count({ where: { status: "PENDING" } });
+      if (pendingPayments > 0) {
+        return null;
+      }
+    }
+    const setting = await tx.platformRuntimeSetting.upsert({
+      where: { id: "global" },
+      create: { id: "global", paymentMode, changedById: req.user!.id },
+      update: { paymentMode, changedById: req.user!.id },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: req.user!.id,
+        action: "GLOBAL_PAYMENT_MODE_CHANGED",
+        entity: "PlatformRuntimeSetting",
+        entityId: "global",
+        ip: req.ip ?? "unknown",
+        meta: { from: previous?.paymentMode ?? "demo", to: paymentMode },
+      },
+    });
+    return setting;
+  });
+  if (!updated) {
+    return res.status(409).json({ error: { code: "MODE_SWITCH_BLOCKED_PENDING_TRANSACTIONS", message: "Reconcile all pending payment intents before switching modes." } });
+  }
+  res.setHeader("Cache-Control", "no-store");
+  return res.json({ paymentMode: updated.paymentMode, updatedAt: updated.updatedAt });
+}));
+
+
+
 /** Currency-scoped platform fee journal. Read-only; this endpoint never moves funds. */
 adminRouter.get("/finance/platform-revenue", asyncHandler(async (req, res) => {
   const currency = typeof req.query.currency === "string" ? req.query.currency.trim().toUpperCase() : "";
