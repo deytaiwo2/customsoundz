@@ -663,6 +663,15 @@ model PlatformRevenueEntry {
   @@index([accountId, createdAt])
 }
 
+model PlatformRuntimeSetting {
+  id          String   @id
+  paymentMode String   @default("demo")
+  changedById String?
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
 model PaymentIntent {
   id          String        @id @default(uuid())
   userId      String
