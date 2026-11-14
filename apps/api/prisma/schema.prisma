@@ -642,6 +642,27 @@ model LedgerEntry {
   @@index([walletId, createdAt])
 }
 
+model PlatformRevenueAccount {
+  id           String                @id @default(uuid())
+  currency     String                @unique
+  balanceMinor BigInt                @default(0)
+  entries      PlatformRevenueEntry[]
+}
+
+model PlatformRevenueEntry {
+  id                String                @id @default(uuid())
+  accountId         String
+  amountMinor       BigInt
+  balanceAfterMinor BigInt
+  refType           String?
+  refId             String?
+  idempotencyKey    String                @unique
+  createdAt         DateTime              @default(now())
+  account           PlatformRevenueAccount @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, createdAt])
+}
+
 model PaymentIntent {
   id          String        @id @default(uuid())
   userId      String
