@@ -45,11 +45,11 @@ export default function DubluVePaymentModePanel() {
     setError("");
     setNotice("");
     try {
-      const result = await api<Snapshot>("/admin/runtime/payment-mode", {
+      const result = await api<{ paymentMode: Mode; updatedAt: string }>("/admin/runtime/payment-mode", {
         method: "PATCH",
         body: JSON.stringify({ paymentMode: selected, ...(selected === "live" ? { confirmation: "LIVE" } : {}) }),
       });
-      setSnapshot(result);
+      setSnapshot((current) => current ? { ...current, paymentMode: result.paymentMode, updatedAt: result.updatedAt } : current);
       setSelected(result.paymentMode);
       setConfirmation("");
       setNotice("Payment mode updated. All new payment intents will use " + result.paymentMode.toUpperCase() + " mode.");
