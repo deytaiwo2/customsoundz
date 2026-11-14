@@ -44,6 +44,20 @@ describe("api foundation (DB-free)", () => {
     expect(payments.status).toBe(403);
     expect(ledger.status).toBe(403);
   });
+  it("protects central payment mode controls from unauthenticated and non-admin access", async () => {
+    const vendorToken = jwt.sign({ role: "VENDOR" }, env.JWT_SECRET, { subject: "vendor-user" });
+    for (const method of ["get", "patch"] as const) {
+      const path = "/api/v1/admin/runtime/payment-mode";
+      const missing = await request(app)[method](path).send({});
+      expect(missing.status).toBe(401);
+      const forbidden = await request(app)[method](path)
+        .set("Authorization", `Bearer ${vendorToken}`)
+        .send({ paymentMode: "demo" });
+      expect(forbidden.status).toBe(403);
+      expect(forbidden.body.error.code).toBe("FORBIDDEN");
+    }
+  });
+
   it("protects the finance reconciliation report from unauthenticated and non-admin access", async () => {
     const path = "/api/v1/admin/finance/reconciliation";
     const missing = await request(app).get(path);
