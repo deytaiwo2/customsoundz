@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
 import { registerSW } from 'virtual:pwa-register';
 import App from './EnterpriseApp';
+import DubluVeHelpAssistant from './components/DubluVeHelpAssistant';
 import EphintaIntro from './components/branding/EphintaIntro';
 import AudioExperience from "./components/AudioExperience";
 import OfflineStatus from './components/OfflineStatus';
@@ -21,6 +22,7 @@ import { initOfflineSync } from './lib/offline/sync';
 import "./styles/ephinta-landing-repair.css";
 import "./styles/ephinta-current-ui-repair.css";
 import { installEphintaIntroWatchdog, markEphintaAppReady } from "./lib/ephintaStartup";
+import "./styles/dubluve-guide.css";
 
 /* ---------- Platform setup ---------- */
 const capacitor = (window as unknown as {
@@ -148,6 +150,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <AudioExperience showPrompt autoPlay />
           <OfflineStatus />
           <SyncConflictList />
+          <DubluVeHelpAssistant />
         </>
       </AppRouter>
     </StartupErrorBoundary>
