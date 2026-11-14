@@ -24,6 +24,9 @@ export default function PlatformRevenuePanel() {
     setLoading(true);
     try {
       const result = await api<RevenueResponse>("/admin/finance/platform-revenue?limit=50");
+      if (!result || !Array.isArray(result.accounts) || !Array.isArray(result.items)) {
+        throw new Error("The platform revenue endpoint returned an incomplete response.");
+      }
       setData(result);
       setError("");
     } catch (reason) {
