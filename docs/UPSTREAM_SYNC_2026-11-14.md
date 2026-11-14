@@ -17,6 +17,7 @@ marketplace. It is not a wholesale upstream replacement.
   transaction as the related wallet movement. The migration backfills legacy
   fee rows without changing customer or provider wallet balances. Admins can
   review the revenue balances and recent entries.
+- **Paystack webhook verification:** accepts the newer timestamped webhook signature with a dedicated `PAYSTACK_WEBHOOK_SECRET`, enforces a five-minute replay window and retains legacy signature verification during migration.
 - **Central payment mode:** administrators can select DEMO, TEST or LIVE from
   one audited setting shared by the API. Payment requests refresh the setting,
   and intent creation locks against a concurrent mode change.
