@@ -24,6 +24,6 @@ services:
       - key: APP_BASE_URL
         value: https://dublu-ve-web-k070.onrender.com
       - key: PAYMENT_MODE
-        value: test
+        value: demo
       - key: DEFAULT_CURRENCY
         value: NGN
