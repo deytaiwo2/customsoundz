@@ -23,10 +23,20 @@ export default function DubluVePaymentModePanel() {
     setLoading(true);
     try {
       const result = await api<Snapshot>("/admin/runtime/payment-mode");
+      if (
+        !result ||
+        !["demo", "test", "live"].includes(result.paymentMode) ||
+        typeof result.updatedAt !== "string" ||
+        typeof result.testAllowed !== "boolean" ||
+        typeof result.liveReady !== "boolean"
+      ) {
+        throw new Error("Payment mode controls are unavailable because the server returned an incomplete configuration.");
+      }
       setSnapshot(result);
       setSelected(result.paymentMode);
       setError("");
     } catch (reason) {
+      setSnapshot(null);
       setError(reason instanceof Error ? reason.message : "Unable to load payment mode.");
     } finally {
       setLoading(false);
