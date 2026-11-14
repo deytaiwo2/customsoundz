@@ -6,6 +6,7 @@
 import { createHmac } from "node:crypto";
 import { env } from "../../config/env";
 import { majorAmountToMinor } from "./webhookVerification";
+import { getRuntimePaymentMode } from "./runtimePaymentMode";
 
 export type ProviderName = "paystack" | "flutterwave" | "stripe" | "opay" | "demo";
 
@@ -13,8 +14,9 @@ export function canUseDemoPayments(
   options: { nodeEnv?: string; paymentMode?: string } = {},
 ): boolean {
   return (
-    (options.nodeEnv ?? env.NODE_ENV) !== "production" &&
-    (options.paymentMode ?? env.PAYMENT_MODE) === "test"
+    (options.paymentMode ?? getRuntimePaymentMode()) === "demo" ||
+    ((options.nodeEnv ?? env.NODE_ENV) !== "production" &&
+      (options.paymentMode ?? getRuntimePaymentMode()) === "test")
   );
 }
 
@@ -27,6 +29,9 @@ export function canCompleteDemoCheckout(
 }
 
 function assertPaymentMode() {
+  const mode = getRuntimePaymentMode();
+  if (mode === "demo") return;
+
   const keys: Array<[string, string | undefined, RegExp, RegExp]> = [
     ["Paystack", env.PAYSTACK_SECRET_KEY, /^sk_test_/, /^sk_live_/],
     ["Flutterwave", env.FLUTTERWAVE_SECRET_KEY, /^FLWSECK_TEST/, /^FLWSECK-/],
@@ -35,32 +40,42 @@ function assertPaymentMode() {
 
   for (const [name, key, testPattern, livePattern] of keys) {
     if (!key) continue;
-
-    if (env.PAYMENT_MODE === "test" && livePattern.test(key)) {
-      throw new Error(`${name} live key cannot be used while PAYMENT_MODE=test`);
+    if (mode === "test" && livePattern.test(key)) {
+      throw new Error(`${name} live key cannot be used while payment mode is TEST`);
     }
-
-    if (env.PAYMENT_MODE === "live" && testPattern.test(key)) {
-      throw new Error(`${name} test key cannot be used while PAYMENT_MODE=live`);
+    if (mode === "live" && testPattern.test(key)) {
+      throw new Error(`${name} test key cannot be used while payment mode is LIVE`);
     }
   }
 
-  if (env.NODE_ENV === "production" && env.PAYMENT_MODE === "test") {
-    throw new Error("PAYMENT_MODE=test is forbidden in production");
+  if (mode === "test" && env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_TEST_MODE !== "true") {
+    throw new Error("TEST payment mode is not enabled for this production deployment");
+  }
+
+  if (mode === "live") {
+    const liveProviderReady =
+      Boolean(env.PAYSTACK_SECRET_KEY?.startsWith("sk_live_")) ||
+      Boolean(env.FLUTTERWAVE_SECRET_KEY?.startsWith("FLWSECK-"));
+    if (!liveProviderReady) {
+      throw new Error("LIVE payment mode is locked until a supported live provider credential is configured");
+    }
   }
 }
 
 export function getPaymentMode() {
   assertPaymentMode();
-  return env.PAYMENT_MODE;
+  return getRuntimePaymentMode();
 }
 
 export function selectProvider(currency: string, country?: string): ProviderName {
+  const mode = getRuntimePaymentMode();
+  if (mode === "demo") return "demo";
   assertPaymentMode();
 
   const c = currency.toUpperCase();
 
-  if (c === "NGN" && env.OPAY_MERCHANT_ID && env.OPAY_PUBLIC_KEY && env.OPAY_SECRET_KEY) return "opay";
+  // This OPay checkout adapter currently targets the sandbox endpoint only.
+  if (mode === "test" && c === "NGN" && env.OPAY_MERCHANT_ID && env.OPAY_PUBLIC_KEY && env.OPAY_SECRET_KEY) return "opay";
 
   if (["NGN", "GHS"].includes(c)) {
     if (env.PAYSTACK_SECRET_KEY) return "paystack";
