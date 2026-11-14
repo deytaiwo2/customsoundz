@@ -127,7 +127,11 @@ export default function DubluVeHelpAssistant() {
   }
 
   function follow(path: string) {
-    navigate(path);
+    const dashboardPath = path.match(/^\/dashboard\/client(.*)$/);
+    const destination = dashboardPath && role && role !== "CLIENT"
+      ? `/dashboard/${role.toLowerCase()}${dashboardPath[1]}`
+      : path;
+    navigate(destination);
     setOpen(false);
     setMaximized(false);
   }
