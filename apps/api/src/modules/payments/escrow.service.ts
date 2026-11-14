@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../lib/errors";
 import { env } from "../../config/env";
 import { assertEscrowReleaseAllowed } from "./escrowPolicy";
+import { recordPlatformRevenue } from "./platformRevenue.service";
 
 /**
  * Release booking escrow to the provider.
@@ -90,9 +91,16 @@ export async function releaseBookingEscrow(
   await prisma.$transaction(async (tx) => {
     const existing = await tx.ledgerEntry.findUnique({ where: { idempotencyKey } });
     if (existing) {
+      await recordPlatformRevenue(tx, {
+        amountMinor: commission,
+        currency,
+        refType: "BOOKING",
+        refId: booking.id,
+        idempotencyKey: `platform_commission:${booking.id}`,
+      });
       await tx.booking.update({
         where: { id: booking.id },
-        data: { status: BookingStatus.FULFILLED },
+        data: { status: BookingStatus.FULFILLED, commissionMinor: commission },
       });
       return;
     }
@@ -160,6 +168,13 @@ export async function releaseBookingEscrow(
     await tx.wallet.update({
       where: { id: vendorWallet.id },
       data: { availableMinor: vendorBal },
+    });
+    await recordPlatformRevenue(tx, {
+      amountMinor: commission,
+      currency,
+      refType: "BOOKING",
+      refId: booking.id,
+      idempotencyKey: `platform_commission:${booking.id}`,
     });
     await tx.booking.update({
       where: { id: booking.id },
