@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { formatMoney, type CurrencyCode, type LocaleCode, t } from "../lib/i18n";
-import { walletApi, paymentsApi, type ApiWallet } from "../lib/api";
+import { walletApi, paymentsApi, type ApiLedgerEntry, type ApiWallet } from "../lib/api";
 
 type WalletBalance = {
   id?: string;
@@ -24,6 +24,10 @@ export default function WalletPanel({
   const [msg, setMsg] = useState("");
   const [depositAmount, setDepositAmount] = useState("50000");
   const [depositCurrency, setDepositCurrency] = useState<CurrencyCode>("NGN");
+  const [ledgerEntries, setLedgerEntries] = useState<ApiLedgerEntry[]>([]);
+  const [ledgerCurrency, setLedgerCurrency] = useState<CurrencyCode>("NGN");
+  const [ledgerLoaded, setLedgerLoaded] = useState(false);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const load = useCallback(() => {
@@ -55,7 +59,7 @@ export default function WalletPanel({
 
   useEffect(() => {
     if (searchParams.get("payment") !== "return") return;
-    setMsg("Payment returned to ESS. Your wallet updates after the provider confirms the transaction.");
+    setMsg("Payment returned to Dublu Vé. Your wallet updates after the provider confirms the transaction.");
     load();
     const next = new URLSearchParams(searchParams);
     next.delete("payment");
@@ -96,6 +100,23 @@ export default function WalletPanel({
     }
   };
 
+  const openLedger = async (wallet: WalletBalance) => {
+    if (!wallet.id) return;
+    setLedgerLoading(true);
+    setMsg("");
+    try {
+      const result = await walletApi.ledger(wallet.id);
+      setLedgerEntries(result.items);
+      setLedgerCurrency(wallet.currency);
+      setLedgerLoaded(true);
+      setMsg(`Transaction history loaded for ${wallet.currency}.`);
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : "Unable to load transaction history.");
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
   const totalEscrow = balances.reduce((s, b) => s + Number(b.escrowMinor), 0);
 
   return (
@@ -106,13 +127,9 @@ export default function WalletPanel({
       <div className="ess-wallet-head">
         <div>
           <p className="ess-eyebrow">{t(locale, "wallet.title")}</p>
-          <h2>
-            {role === "VENDOR"
-              ? "Earnings & wallet"
-              : "Funds & protection"}
-          </h2>
+          <h2>{role === "VENDOR" || role === "ARTIST" ? "Earnings & wallet" : "Funds & protection"}</h2>
           <p className="ess-muted">
-            Wallet balances are loaded from ESS · append-only ledger · minor-unit precision.
+            Dublu Vé wallet · append-only transaction ledger · minor-unit precision.
           </p>
         </div>
         {totalEscrow > 0 && (
@@ -126,15 +143,7 @@ export default function WalletPanel({
       </div>
 
       {msg && (
-        <div
-          className="ess-form-error"
-          style={{
-            background: "#052e16",
-            borderColor: "#166534",
-            color: "#86efac",
-            marginBottom: 12,
-          }}
-        >
+        <div className="ess-form-error" role="status" style={{ marginBottom: 12 }}>
           {msg}
         </div>
       )}
@@ -151,40 +160,47 @@ export default function WalletPanel({
         <div className="ess-wallet-grid">
           {balances.map((b) => (
             <article key={b.currency + (b.id || "")} className="ess-wallet-card">
-              <header>
-                <strong>{b.currency}</strong>
-              </header>
+              <header><strong>{b.currency}</strong></header>
               <div className="ess-wallet-rows">
-                <div>
-                  <span>{t(locale, "wallet.available")}</span>
-                  <strong>{formatMoney(b.availableMinor, b.currency, locale)}</strong>
-                </div>
-                <div>
-                  <span>{t(locale, "wallet.held")}</span>
-                  <strong className="ess-wallet-escrow">
-                    {formatMoney(b.escrowMinor, b.currency, locale)}
-                  </strong>
-                </div>
-                <div>
-                  <span>{t(locale, "wallet.pending")}</span>
-                  <strong>{formatMoney(b.pendingMinor, b.currency, locale)}</strong>
-                </div>
+                <div><span>{t(locale, "wallet.available")}</span><strong>{formatMoney(b.availableMinor, b.currency, locale)}</strong></div>
+                <div><span>{t(locale, "wallet.held")}</span><strong className="ess-wallet-escrow">{formatMoney(b.escrowMinor, b.currency, locale)}</strong></div>
+                <div><span>{t(locale, "wallet.pending")}</span><strong>{formatMoney(b.pendingMinor, b.currency, locale)}</strong></div>
               </div>
               <div className="ess-wallet-actions">
                 {b.id && (
-                  <button
-                    className="ess-quiet-button"
-                    type="button"
-                    onClick={() =>
-                      walletApi.ledger(b.id!).then(() => setMsg(`Ledger loaded for ${b.currency}`))
-                    }
-                  >
-                    View ledger
+                  <button className="ess-quiet-button" type="button" onClick={() => void openLedger(b)} disabled={ledgerLoading}>
+                    {ledgerLoading ? "Loading…" : "View transaction history"}
                   </button>
                 )}
               </div>
             </article>
           ))}
+        </div>
+      )}
+
+      {ledgerLoaded && (
+        <div className="ess-wallet-card" style={{ marginTop: 16 }}>
+          <div className="ess-wallet-head">
+            <strong>Transaction history · {ledgerCurrency}</strong>
+            <button className="ess-quiet-button" type="button" onClick={() => setLedgerLoaded(false)}>Close</button>
+          </div>
+          {ledgerEntries.length === 0 ? (
+            <p className="ess-muted">No wallet transactions yet.</p>
+          ) : (
+            <div className="ess-wallet-rows">
+              {ledgerEntries.map((entry) => (
+                <div key={entry.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--ess-border, #ddd)" }}>
+                  <span>{entry.type.replace(/_/g, " ")}</span>
+                  <strong>{formatMoney(entry.amountMinor, ledgerCurrency, locale)}</strong>
+                  <small className="ess-muted">
+                    {entry.refType ? entry.refType.replace(/_/g, " ") : "Wallet transaction"}
+                    {entry.createdAt ? ` · ${new Date(entry.createdAt).toLocaleString()}` : ""}
+                  </small>
+                  <small className="ess-muted">Balance after: {formatMoney(entry.balanceAfterMinor, ledgerCurrency, locale)}</small>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -196,35 +212,26 @@ export default function WalletPanel({
         <div className="ess-form-grid">
           <label>
             Amount (major units)
-            <input
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              inputMode="decimal"
-            />
+            <input value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} inputMode="decimal" />
           </label>
           <label>
             Currency
-            <select
-              value={depositCurrency}
-              onChange={(e) => setDepositCurrency(e.target.value as CurrencyCode)}
-            >
+            <select value={depositCurrency} onChange={(e) => setDepositCurrency(e.target.value as CurrencyCode)}>
               <option value="NGN">NGN</option>
               <option value="GHS">GHS</option>
             </select>
           </label>
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-          <button className="ess-primary" type="button" onClick={addFunds}>
-            Deposit to wallet
-          </button>
+          <button className="ess-primary" type="button" onClick={addFunds}>Deposit to wallet</button>
         </div>
       </div>
 
-      {(role === "VENDOR") && (
+      {(role === "VENDOR" || role === "ARTIST") && (
         <div className="ess-wallet-card" style={{ marginTop: 16 }}>
           <strong>Receive payments</strong>
           <p className="ess-muted" style={{ margin: "6px 0 12px" }}>
-            The payer's funds stay protected in platform-controlled escrow until the event ends, every service check is green, and the event's assigned lead verifier authorizes release. Released funds are added to your wallet. External bank and mobile-money withdrawals are not yet enabled.
+            Customer booking funds remain in platform escrow until the booking's completion and release conditions are met. External bank withdrawals are not enabled yet; no funds will be moved to a bank from this screen.
           </p>
         </div>
       )}
@@ -233,14 +240,14 @@ export default function WalletPanel({
         <div>
           <strong>How escrow works</strong>
           <p>
-            When a booking is paid, funds move into platform-controlled escrow. The payer and payee are protected: only the event's assigned lead verifier can authorize release after the event ends and all service checks are green. Every movement is append-only and auditable via the ledger.
+            When a booking is paid, funds move into platform-controlled escrow. Funds are released only after the applicable completion and approval process. Every movement is append-only and auditable in the wallet ledger.
           </p>
         </div>
         <ul>
           <li>Hold on payment success</li>
-          <li>Release after verifier-confirmed event completion</li>
+          <li>Release after confirmed completion</li>
           <li>Refund on approved dispute</li>
-          <li>Commission taken at release</li>
+          <li>Commission recorded at release</li>
         </ul>
       </div>
     </section>
