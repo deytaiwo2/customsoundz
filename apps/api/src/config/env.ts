@@ -1,0 +1,49 @@
+import "dotenv/config";
+import { z } from "zod/v3";
+
+const schema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  PORT: z.coerce.number().default(5000),
+  DATABASE_URL: z.string().min(1),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
+  ACCESS_TTL_MIN: z.coerce.number().default(15),
+  REFRESH_TTL_DAYS: z.coerce.number().default(30),
+  CORS_ORIGINS: z.string().default("http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,https://localhost,http://localhost,capacitor://localhost"),
+  ALLOW_CODESPACES: z.enum(["true", "false"]).default("false"),
+  COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(500),
+  DEFAULT_CURRENCY: z.string().length(3).default("NGN"),
+  APP_BASE_URL: z.string().url().default("http://localhost:4173"),
+  API_BASE_URL: z.string().url().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().email().optional(),
+  PAYSTACK_SECRET_KEY: z.string().optional(),
+  PAYSTACK_WEBHOOK_SECRET: z.string().optional(),
+  FLUTTERWAVE_SECRET_KEY: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  OPAY_MERCHANT_ID: z.string().optional(),
+  OPAY_PUBLIC_KEY: z.string().optional(),
+  OPAY_SECRET_KEY: z.string().optional(),
+  PAYMENT_MODE: z.enum(["demo", "test", "live"]).default("demo"),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_ENDPOINT_URL_S3: z.string().url().optional(),
+  AWS_REGION: z.string().optional(),
+  KYC_STORAGE_BUCKET: z.string().optional(),
+  AUDIO_STORAGE_BUCKET: z.string().optional(),
+});
+
+const rawEnv: NodeJS.ProcessEnv = {};
+for (const key in process.env) {
+  const value = process.env[key];
+  if (value !== "") rawEnv[key] = value;
+}
+const parsed = schema.safeParse(rawEnv);
+if (!parsed.success) {
+  console.error("Invalid environment:", parsed.error.flatten().fieldErrors);
+  process.exit(1);
+}
+export const env = parsed.data;

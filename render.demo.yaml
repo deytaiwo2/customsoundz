@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: dublu-ve-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: feature/dublu-ve-integrated-marketplace
+    rootDir: .
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run db:deploy && npm start
+    healthCheckPath: /ready
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_ONLINE
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://dublu-ve-web-k070.onrender.com
+      - key: APP_BASE_URL
+        value: https://dublu-ve-web-k070.onrender.com
+      - key: PAYMENT_MODE
+        value: demo
+      - key: DEFAULT_CURRENCY
+        value: NGN

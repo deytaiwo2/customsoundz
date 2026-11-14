@@ -1,0 +1,108 @@
+name: Dublu Vé iOS Simulator Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/web/**'
+      - 'apps/mobile/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'apps/web/**'
+      - 'apps/mobile/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ios.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ios-simulator:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test web app
+        run: npm run test -w apps/web
+
+      - name: Build web app
+        run: npm run build -w apps/web
+
+      - name: Add iOS platform if missing
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -d ios ]]; then
+            npx cap add ios
+          fi
+
+      - name: Sync Capacitor iOS
+        working-directory: apps/mobile
+        run: npx cap sync ios
+
+      - name: List Xcode schemes
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKSPACE="apps/mobile/ios/App/App.xcworkspace"
+          if [[ ! -d "$WORKSPACE" ]]; then
+            echo "CocoaPods workspace not found at $WORKSPACE."
+            find apps/mobile/ios -maxdepth 6 -name '*.xcworkspace' -print
+            exit 1
+          fi
+          if [[ ! -d "apps/mobile/ios/App/Pods/Pods.xcodeproj" ]]; then
+            echo "CocoaPods project missing after Capacitor sync."
+            exit 1
+          fi
+          echo "Workspace: $WORKSPACE"
+          xcodebuild -list -workspace "$WORKSPACE"
+
+      - name: Build for iOS Simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKSPACE="apps/mobile/ios/App/App.xcworkspace"
+          SCHEME="$(xcodebuild -list -workspace "$WORKSPACE" 2>/dev/null | awk '/Schemes:/{flag=1;next} flag && NF {gsub(/^[[:space:]]+/, ""); print; exit}')"
+          if [[ -z "$SCHEME" ]]; then
+            echo "Could not automatically detect the Xcode scheme."
+            exit 1
+          fi
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            SWIFT_ENABLE_EXPLICIT_MODULES=NO \
+            SWIFT_USE_INTEGRATED_DRIVER=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Upload simulator build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dublu-ve-ios-simulator-build
+          path: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/
+          if-no-files-found: error
+          retention-days: 14

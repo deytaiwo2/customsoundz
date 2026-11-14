@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: dublu-ve-web
+    runtime: static
+    branch: feature/dublu-ve-integrated-marketplace
+    rootDir: .
+    buildCommand: npm ci && npm run build -w apps/web
+    staticPublishPath: apps/web/dist
+    autoDeployTrigger: commit

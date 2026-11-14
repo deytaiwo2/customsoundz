@@ -1,0 +1,103 @@
+.eph-audio__backdrop {
+  position: fixed;
+  z-index: 1200;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(320px, calc(100vw - 28px));
+}
+.eph-audio__prompt {
+  box-sizing: border-box;
+  padding: 16px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 16px;
+  color: #f6f7fb;
+  background: rgb(20 27 46 / 96%);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 24%);
+  backdrop-filter: blur(14px);
+}
+.eph-audio__prompt-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 10px;
+  color: #d7ccff;
+  background: rgb(167 139 250 / 14%);
+  font-size: 19px;
+}
+.eph-audio__eyebrow {
+  margin: 12px 0 4px;
+  color: #c4b5fd;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.eph-audio__prompt h2 {
+  margin: 0;
+  color: #f6f7fb;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+}
+.eph-audio__prompt > p:not(.eph-audio__eyebrow) {
+  margin: 7px 0 13px;
+  color: #c1c9da;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.eph-audio__choices {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.eph-audio__choices button {
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease;
+}
+.eph-audio__accept {
+  background: #654bb5;
+}
+.eph-audio__accept:hover {
+  background: #7459c6;
+}
+.eph-audio__decline {
+  border-color: rgb(255 255 255 / 12%) !important;
+  background: transparent;
+  color: #c1c9da !important;
+}
+.eph-audio__decline:hover {
+  background: rgb(255 255 255 / 6%);
+}
+.eph-audio__choices button:focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 2px;
+}
+.eph-audio__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+@media (max-width: 480px) {
+  .eph-audio__backdrop {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: min(300px, calc(100vw - 20px));
+  }
+  .eph-audio__prompt {
+    padding: 14px;
+    border-radius: 14px;
+  }
+}
