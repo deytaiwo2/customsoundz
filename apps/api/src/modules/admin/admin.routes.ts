@@ -8,6 +8,45 @@ import { refundDisputedBookingEscrow, releaseBookingEscrow } from "../payments/e
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole("ADMIN"));
 
+
+/** Currency-scoped platform fee journal. Read-only; this endpoint never moves funds. */
+adminRouter.get("/finance/platform-revenue", asyncHandler(async (req, res) => {
+  const currency = typeof req.query.currency === "string" ? req.query.currency.trim().toUpperCase() : "";
+  if (currency && !/^[A-Z]{3}$/.test(currency)) {
+    res.status(400).json({ error: { code: "INVALID_CURRENCY", message: "Currency must be a three-letter ISO code" } });
+    return;
+  }
+  const requestedLimit = Number(req.query.limit ?? 50);
+  const limit = Number.isSafeInteger(requestedLimit) ? Math.min(100, Math.max(1, requestedLimit)) : 50;
+  const [accounts, entries] = await Promise.all([
+    prisma.platformRevenueAccount.findMany({
+      where: currency ? { currency } : undefined,
+      orderBy: { currency: "asc" },
+    }),
+    prisma.platformRevenueEntry.findMany({
+      where: currency ? { account: { currency } } : undefined,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: { account: { select: { currency: true } } },
+    }),
+  ]);
+  res.json({
+    accounts: accounts.map((account) => ({
+      currency: account.currency,
+      balanceMinor: account.balanceMinor.toString(),
+    })),
+    items: entries.map((entry) => ({
+      id: entry.id,
+      currency: entry.account.currency,
+      amountMinor: entry.amountMinor.toString(),
+      balanceAfterMinor: entry.balanceAfterMinor.toString(),
+      refType: entry.refType,
+      refId: entry.refId,
+      createdAt: entry.createdAt,
+    })),
+  });
+}));
+
 adminRouter.patch("/listings/:listingId/moderation", asyncHandler(async (req, res) => {
   const status = req.body.status;
   const reason = typeof req.body.reason === "string" ? req.body.reason.trim() : "";
