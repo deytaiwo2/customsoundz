@@ -1,5 +1,5 @@
 /**
- * Thin authenticated API client for Dublu Vé web.
+ * Thin authenticated API client for ESS web.
  * Tokens are stored in localStorage by EnterpriseApp auth flow.
  */
 
@@ -272,13 +272,88 @@ export type ApiCart = {
   items: ApiCartItem[];
 };
 
-export const cartApi = {
-  get: () => api<ApiCart>("/cart"),
-  add: (body: { listingId: string; quantity?: number }) =>
-    api<ApiCart>("/cart/items", { method: "POST", body: JSON.stringify(body) }),
-  update: (itemId: string, quantity: number) =>
-    api<ApiCart>(`/cart/items/${itemId}`, { method: "PATCH", body: JSON.stringify({ quantity }) }),
-  remove: (itemId: string) => api<ApiCart>(`/cart/items/${itemId}`, { method: "DELETE" }),
-  checkout: (body: { idempotencyKey: string; notes?: string }) =>
-    api<{ booking: { id: string; status: string; totalMinor: string; currency: string }; checkout: { id: string; status: string } }>("/cart/checkout", { method: "POST", body: JSON.stringify(body) }),
+export type ApiCheckoutSession = {
+  id: string;
+  status: string;
+  currency: string;
+  subtotalMinor: string;
+  commissionMinor: string;
+  totalMinor: string;
+  expiresAt: string;
+  items: Array<{
+    id: string;
+    listingId: string;
+    title: string;
+    quantity: number;
+    unitPriceMinor: string;
+    currency: string;
+  }>;
+  paymentMethods?: string[];
 };
+
+export const checkoutApi = {
+  cart: (eventId?: string) =>
+    api<{ cart: ApiCart }>(`/checkout/cart${eventId ? `?eventId=${encodeURIComponent(eventId)}` : ""}`),
+  add: (listingId: string, quantity = 1, eventId?: string) =>
+    api<{ cart: ApiCart }>(`/checkout/cart/items`, {
+      method: "POST",
+      body: JSON.stringify({ listingId, quantity, ...(eventId ? { eventId } : {}) }),
+    }),
+  update: (itemId: string, quantity: number) =>
+    api<{ cart: ApiCart }>(`/checkout/cart/items/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ quantity }),
+    }),
+  remove: (itemId: string) =>
+    api<{ ok: boolean }>(`/checkout/cart/items/${itemId}`, {
+      method: "DELETE",
+      body: "{}",
+    }),
+  createSession: (cartId?: string, eventId?: string) =>
+    api<{ session: ApiCheckoutSession }>("/checkout/checkout-sessions", {
+      method: "POST",
+      body: JSON.stringify({ ...(cartId ? { cartId } : {}), ...(eventId ? { eventId } : {}) }),
+    }),
+  getSession: (id: string) =>
+    api<{ session: ApiCheckoutSession }>(`/checkout/checkout-sessions/${id}`),
+  payWithWallet: (id: string, idempotencyKey?: string) =>
+    api<{ status: string; sessionId: string; bookingIds: string[]; totalMinor: string; currency: string }>(
+      `/checkout/checkout-sessions/${id}/pay-with-wallet`,
+      { method: "POST", body: JSON.stringify({ ...(idempotencyKey ? { idempotencyKey } : {}) }) },
+    ),
+  cancelSession: (id: string) =>
+    api<{ session: { id: string; status: string } }>(`/checkout/checkout-sessions/${id}/cancel`, {
+      method: "POST",
+      body: "{}",
+    }),
+};
+
+export const kycCountriesApi = {
+  list: (region?: string) =>
+    api<{ count: number; items: Array<{ code: string; name: string; region: string; currency: string; identityDocs: string[]; businessDocs: string[]; nationalIdLabel?: string; notes?: string }> }>(
+      `/kyc/countries${region ? `?region=${region}` : ""}`,
+    ),
+  profile: (code: string) => api<{ profile: Record<string, unknown> }>(`/kyc/countries/${code}`),
+};
+
+
+/** Download an authenticated CSV or other file response from the API. */
+export async function downloadApiFile(path: string, filename: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  const accessToken = token();
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const response = await fetch(apiUrl(path), { method: "GET", headers, cache: "no-store" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.error?.message || body?.message || `Request failed (${response.status})`);
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
