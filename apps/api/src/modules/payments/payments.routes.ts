@@ -19,6 +19,7 @@ import { asyncHandler } from "../../lib/async";
 import { HttpError } from "../../lib/errors";
 import { commissionMinor } from "../../lib/money";
 import { recordPlatformRevenue } from "./platformRevenue.service";
+import { lockCurrentPaymentMode, paymentModeGuard } from "./runtimePaymentMode";
 import { env } from "../../config/env";
 import {
   initializeFlutterwave,
@@ -47,6 +48,7 @@ import {
 
 
 export const paymentsRouter = Router();
+paymentsRouter.use(paymentModeGuard);
 
 
 /** Create payment intent to fund wallet */
@@ -133,16 +135,19 @@ paymentsRouter.post(
       }
     }
 
-    const intent = await prisma.paymentIntent.create({
-      data: {
-        userId: req.user!.id,
-        provider: init.provider,
-        amountMinor,
-        currency,
-        status: PaymentStatus.PENDING,
-        purpose,
-        providerRef: init.providerRef,
-      },
+    const intent = await prisma.$transaction(async (tx) => {
+      await lockCurrentPaymentMode(tx);
+      return tx.paymentIntent.create({
+        data: {
+          userId: req.user!.id,
+          provider: init.provider,
+          amountMinor,
+          currency,
+          status: PaymentStatus.PENDING,
+          purpose,
+          providerRef: init.providerRef,
+        },
+      });
     });
 
     const checkoutUrl =
